@@ -1,0 +1,6 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/SvuSessionsLauncher/SvuSessionsLauncher.csproj" />
+    <Project Path="src/SvuVoiceHelper/SvuVoiceHelper.csproj" />
+  </Folder>
+</Solution>

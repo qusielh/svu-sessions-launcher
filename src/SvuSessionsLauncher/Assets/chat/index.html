@@ -1,0 +1,135 @@
+﻿<!DOCTYPE html>
+<html lang="en" dir="ltr" class="chat-preparing">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Room Chat</title>
+    <link rel="stylesheet" href="app.css?v=20261106l" />
+  <script>
+    // Appearance is owned by the launcher: it arrives on the query string so the
+    // chat matches the app (light/dark + accent + header radiant). Kept inline
+    // and first so the correct theme is set before the first paint.
+    (function () {
+      function hex(v) { return v && /^[0-9a-fA-F]{6}$/.test(v) ? "#" + v : null; }
+
+      // Also called from the launcher when the user changes the look while a
+      // session window is already open, so the page re-tints without a reload.
+      function paint(t) {
+        if (!t) { return; }
+        document.documentElement.setAttribute("data-theme", t.theme === "light" ? "light" : "dark");
+        var s = document.documentElement.style;
+        function set(name, value) { var c = hex(value); if (c) { s.setProperty(name, c); } }
+        set("--accent", t.accent);
+        set("--accent-hover", t.accentHover);
+        set("--accent-strong", t.accentStrong);
+        var h0 = hex(t.hd0), h1 = hex(t.hd1), h2 = hex(t.hd2);
+        if (h0 && h1 && h2) {
+          s.setProperty("--header-gradient", "linear-gradient(135deg, " + h0 + ", " + h1 + " 55%, " + h2 + ")");
+        }
+      }
+
+      var p = new URLSearchParams(location.search);
+      paint({
+        theme: p.get("theme"),
+        accent: p.get("accent"),
+        accentHover: p.get("accentHover"),
+        accentStrong: p.get("accentStrong"),
+        hd0: p.get("hd0"),
+        hd1: p.get("hd1"),
+        hd2: p.get("hd2")
+      });
+      window.setAppTheme = paint;
+    })();
+  </script>
+</head>
+<body>
+  <div class="app">
+    <!-- In-page loader: the SVU wordmark stays on top until the page announces
+         it has joined the session (posts {type:'joined'}), then fades out and
+         hands off to the chat UI. -->
+    <div id="splash" class="splash">
+      <div class="splash-stage">
+        <!-- SVU wordmark (monogram) -->
+        <div class="scene active" data-scene="1">
+          <svg class="monogram" viewBox="0 0 300 190" width="270" height="171" preserveAspectRatio="xMidYMid meet">
+            <defs>
+              <linearGradient id="monoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop stop-color="#4DE9D6" offset="0%" />
+                <stop stop-color="#2BD9C2" offset="60%" />
+                <stop stop-color="#1FAF96" offset="100%" />
+              </linearGradient>
+            </defs>
+            <g class="mono-letters" fill="url(#monoGrad)">
+              <text class="mono-letter l0" x="82" y="120" text-anchor="middle">S</text>
+              <text class="mono-letter l1" x="150" y="120" text-anchor="middle">V</text>
+              <text class="mono-letter l2" x="218" y="120" text-anchor="middle">U</text>
+            </g>
+            <line class="mono-rule" x1="64" y1="146" x2="236" y2="146" />
+            <circle class="mono-dot" cx="150" cy="163" r="3.4" />
+          </svg>
+        </div>
+      </div>
+
+      <div class="splash-text">
+        <div id="splashTitle" class="splash-title">Loading session…</div>
+        <div class="splash-sub">SVU SESSIONS</div>
+      </div>
+
+      <!-- Shown instead of the loader once every join attempt has failed. The
+           engine never opens a browser/file picker, so the user retries here. -->
+      <div id="splashFail" class="splash-fail" style="display:none">
+        <div class="splash-fail-title">Check your internet connection</div>
+        <div class="splash-fail-sub">The session could not be reached.</div>
+        <button id="splashRetry" class="splash-retry" type="button">Retry</button>
+      </div>
+    </div>
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="section-title">In the room <span id="memberCount" class="count">0</span></div>
+        <div id="memberList" class="member-list">
+          <div class="empty small">No one has joined yet</div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="chat-head">
+        <div class="head-left">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none"
+                 stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                 stroke-linejoin="round">
+              <path d="M20.5 11.5a8 8 0 0 1-11.6 7.1L4 20.2l1.7-4.6A8 8 0 1 1 20.5 11.5z"></path>
+            </svg>
+          </div>
+          <div class="chat-title">
+            <h1 id="roomTitle">Room Chat</h1>
+            <p id="chatSub">Connecting…</p>
+          </div>
+          <span id="roleLabel" class="role-badge">Student</span>
+        </div>
+        <div class="head-actions">
+          <button id="leaveBtn" class="leave-btn" type="button">Leave</button>
+        </div>
+      </header>
+
+      <div id="transcript" class="transcript" role="log" aria-live="polite">
+        <div class="empty-state" id="emptyState">
+          <p class="empty-title">No messages yet</p>
+          <p class="empty-sub">Say hello to start the conversation.</p>
+        </div>
+      </div>
+
+      <footer class="composer">
+        <div class="composer-inner">
+          <textarea id="input" rows="1" dir="auto" placeholder="Type a message…" autocomplete="off" spellcheck="true"></textarea>
+          <button id="sendBtn" class="send-btn" type="button" title="Send" aria-label="Send">Send</button>
+        </div>
+      </footer>
+    </main>
+  </div>
+
+    <script src="app.js?v=20261106l"></script>
+</body>
+</html>
+

@@ -1,0 +1,432 @@
+﻿<!DOCTYPE html>
+<html lang="en" dir="ltr" data-theme="light" data-lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;" />
+    <title>SVU Sessions</title>
+    <link rel="stylesheet" href="studio.css?v=20261106l" />
+</head>
+<body>
+    <div class="app">
+        <aside class="rail">
+            <div class="brand">
+                <div class="brand-mark">
+                    <svg class="icon"><use href="#i-brand"></use></svg>
+                </div>
+                <span class="brand-name">SVU</span>
+            </div>
+
+            <nav class="rail-nav">
+                <button class="rail-btn" data-action="downloads" data-tip="download.title">
+                    <svg class="icon"><use href="#i-download"></use></svg>
+                </button>
+                <button class="rail-btn" data-action="appearance" data-tip="main.appearance">
+                    <svg class="icon"><use href="#i-sliders"></use></svg>
+                </button>
+            </nav>
+
+            <div class="rail-spacer"></div>
+            <div class="rail-sep"></div>
+
+            <button class="rail-btn" data-action="about" data-tip="main.about">
+                <svg class="icon"><use href="#i-info"></use></svg>
+            </button>
+            <button class="rail-btn" data-action="signOut" data-tip="main.logout">
+                <svg class="icon"><use href="#i-logout"></use></svg>
+            </button>
+            <button class="rail-btn" data-action="exit" data-tip="main.exit">
+                <svg class="icon"><use href="#i-power"></use></svg>
+            </button>
+        </aside>
+
+        <main class="shell">
+            <header class="masthead">
+                <div class="masthead-glow"></div>
+
+                <div class="masthead-row">
+                    <div class="titles">
+                        <div class="eyebrow" id="appTitle"></div>
+                        <div class="title-line">
+                            <span class="title-rule"></span>
+                            <h1 id="mainTitle"></h1>
+                        </div>
+                        <div class="meta-row">
+                            <span id="welcome"></span>
+                            <span class="chip">
+                                <i class="dot accent"></i>
+                                <span id="dataSource"></span>
+                            </span>
+                            <span class="chip" id="roleChip"></span>
+                            <span class="term-chip" id="termChip" hidden>
+                                <span id="termLabel"></span>
+                                <b id="termValue"></b>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="counter" id="counter" hidden>
+                        <span class="counter-rule"></span>
+                        <div class="counter-body">
+                            <span class="counter-num" id="sessionCount"></span>
+                            <span class="eyebrow" id="counterLabel"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="toolbar">
+                    <div class="field">
+                        <label data-t="main.program"></label>
+                        <div class="select-wrap" id="programSelect" data-select>
+                            <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="select-value"></span>
+                                <svg class="icon chevron"><use href="#i-chevron"></use></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label data-t="main.course"></label>
+                        <div class="select-wrap" id="courseSelect" data-select>
+                            <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="select-value"></span>
+                                <svg class="icon chevron"><use href="#i-chevron"></use></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label data-t="main.options"></label>
+                        <div class="select-wrap" id="modeSelect" data-select>
+                            <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                <span class="select-value"></span>
+                                <svg class="icon chevron"><use href="#i-chevron"></use></svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button class="btn secondary refresh" id="refreshBtn" data-action="refresh">
+                        <span class="refresh-spin"><svg class="icon" id="refreshIcon"><use href="#i-refresh"></use></svg></span>
+                        <span data-t="main.refresh"></span>
+                    </button>
+                </div>
+            </header>
+
+            <section class="workspace">
+                <section class="panel sessions">
+                    <div class="panel-head">
+                        <div class="head-top">
+                            <div class="head-title">
+                                <h2 data-t="main.sessions"></h2>
+                            </div>
+                            <div class="filters">
+                                <label class="input">
+                                    <svg class="icon"><use href="#i-user"></use></svg>
+                                    <input id="tutorFilter" type="text" autocomplete="off" spellcheck="false" />
+                                </label>
+                                <label class="input narrow">
+                                    <svg class="icon"><use href="#i-tag"></use></svg>
+                                    <input id="classFilter" type="text" autocomplete="off" spellcheck="false" />
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="sort-row">
+                            <svg class="icon muted"><use href="#i-sort"></use></svg>
+                            <button class="chip-btn sorting-button" data-sort="start">
+                                <span data-t="col.start"></span><span class="arrow"></span>
+                            </button>
+                            <button class="chip-btn sorting-button" data-sort="course">
+                                <span data-t="col.course"></span><span class="arrow"></span>
+                            </button>
+                            <button class="chip-btn sorting-button" data-sort="class">
+                                <span data-t="col.class"></span><span class="arrow"></span>
+                            </button>
+                            <button class="chip-btn sorting-button" data-sort="tutor">
+                                <span data-t="col.tutor"></span><span class="arrow"></span>
+                            </button>
+                        </div>
+
+                        <div class="loadbar" id="loadbar" hidden><span></span></div>
+                    </div>
+
+                    <div class="list" id="sessionList">
+                        <div class="list-state" id="listState"><span class="spinner"></span></div>
+                        <div class="list-virtual" id="listVirtual" hidden></div>
+                    </div>
+                </section>
+            </section>
+
+            <footer class="statusbar">
+                <span class="status-msg" id="statusMsg"></span>
+                <div class="status-right">
+                    <span class="mic" id="mic"></span>
+                    <button class="ghost" data-action="toggleTime" id="timeBtn"></button>
+                    <button class="ghost" data-action="diagnostics" data-t="diag.button"></button>
+                    <div class="lang" id="langSwitch">
+                        <button data-lang="ar">&#1575;&#1604;&#1593;&#1585;&#1576;&#1610;&#1577;</button>
+                        <button data-lang="en">English</button>
+                    </div>
+                </div>
+            </footer>
+        </main>
+
+        <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+
+        <aside class="drawer appearance" id="appearanceDrawer" hidden>
+            <div class="drawer-head">
+                <div>
+                    <h3 data-t="main.appearance"></h3>
+                    <p data-t="main.style"></p>
+                </div>
+                <button class="icon-btn small" data-drawer-close data-tip="about.close">
+                    <svg class="icon"><use href="#i-close"></use></svg>
+                </button>
+            </div>
+
+            <div class="drawer-body">
+                <section class="ap-section">
+                    <div class="ap-label" data-t="main.presets"></div>
+                    <div class="preset-grid" id="presetGrid"></div>
+                    <button class="ap-more" id="presetMore" type="button" data-t="main.showMore"></button>
+                </section>
+
+                <section class="ap-section">
+                    <div class="ap-label" data-t="main.theme"></div>
+                    <div class="segmented" id="themeSwitch">
+                        <button data-ap-theme="light" data-t="main.themeLight"></button>
+                        <button data-ap-theme="dark" data-t="main.themeDark"></button>
+                    </div>
+                </section>
+
+                <section class="ap-section">
+                    <div class="ap-label" data-t="main.globalColor"></div>
+                    <div class="color-row">
+                        <label class="color-picker" data-tip="main.globalColor">
+                            <span class="color-preview" id="accentPreview"></span>
+                            <input type="color" id="accentColor" />
+                        </label>
+                        <input class="color-hex" id="accentHex" type="text" maxlength="7"
+                               spellcheck="false" autocomplete="off" />
+                        <span class="ap-hint" data-t="main.colorHint"></span>
+                    </div>
+                </section>
+
+                <section class="ap-section">
+                    <div class="ap-label" data-t="main.labelInk"></div>
+                    <div class="segmented ink" id="inkSwitch">
+                        <button data-ap-ink="auto" data-t="main.inkAuto"></button>
+                        <button data-ap-ink="black" data-t="main.inkBlack"></button>
+                        <button data-ap-ink="white" data-t="main.inkWhite"></button>
+                    </div>
+                </section>
+
+                <button class="btn primary ap-close" data-drawer-close data-t="about.close"></button>
+            </div>
+        </aside>
+
+        <aside class="drawer downloads" id="downloadsDrawer" hidden>
+            <div class="drawer-head">
+                <div>
+                    <h3 data-t="download.title"></h3>
+                    <p data-t="download.subtitle"></p>
+                </div>
+                <button class="icon-btn small" data-drawer-close data-tip="about.close">
+                    <svg class="icon"><use href="#i-close"></use></svg>
+                </button>
+            </div>
+
+            <div class="dl-body">
+                <div class="dl-save">
+                    <span class="ap-label" data-t="download.saveTo"></span>
+                    <button class="folder-btn" data-action="download-folder" id="downloadFolderBtn">
+                        <svg class="icon"><use href="#i-folder"></use></svg>
+                        <span id="downloadFolder"></span>
+                    </button>
+                </div>
+
+                <div class="dl-filters">
+                    <label class="dl-field">
+                        <span data-t="download.term"></span>
+                        <div class="dl-select" id="dlTermWrap">
+                            <div class="select-wrap compact" id="dlTerm" data-select>
+                                <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                    <span class="select-value"></span>
+                                    <svg class="icon chevron"><use href="#i-chevron"></use></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="dl-field">
+                        <span data-t="download.program"></span>
+                        <div class="dl-select" id="dlProgramWrap">
+                            <div class="select-wrap compact" id="dlProgram" data-select>
+                                <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                    <span class="select-value"></span>
+                                    <svg class="icon chevron"><use href="#i-chevron"></use></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="dl-field">
+                        <span data-t="download.course"></span>
+                        <div class="dl-select" id="dlCourseWrap">
+                            <div class="select-wrap compact" id="dlCourse" data-select>
+                                <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                    <span class="select-value"></span>
+                                    <svg class="icon chevron"><use href="#i-chevron"></use></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="dl-field">
+                        <span data-t="download.tutor"></span>
+                        <div class="dl-select" id="dlTutorWrap">
+                            <div class="select-wrap compact" id="dlTutor" data-select>
+                                <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                    <span class="select-value"></span>
+                                    <svg class="icon chevron"><use href="#i-chevron"></use></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="dl-field">
+                        <span data-t="download.class"></span>
+                        <div class="dl-select" id="dlClassWrap">
+                            <div class="select-wrap compact" id="dlClass" data-select>
+                                <button type="button" class="select-trigger" aria-haspopup="listbox" aria-expanded="false">
+                                    <span class="select-value"></span>
+                                    <svg class="icon chevron"><use href="#i-chevron"></use></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+
+                <div class="dl-list-wrap">
+                    <div class="dl-head" id="downloadHead" hidden>
+                        <span></span>
+                        <span data-t="col.session"></span>
+                        <span data-t="col.course"></span>
+                        <span data-t="col.class"></span>
+                        <span data-t="download.colTerm"></span>
+                        <span data-t="download.colDate"></span>
+                    </div>
+                    <div class="dl-list" id="downloadList"></div>
+                    <div class="dl-state" id="downloadState" hidden></div>
+                </div>
+            </div>
+
+            <footer class="dl-foot">
+                <div class="dl-foot-left">
+                    <button class="btn ghost sm" data-action="download-select-all" id="downloadSelectAll"
+                            data-t="download.selectAll"></button>
+                    <button class="btn ghost sm" data-action="download-clear" id="downloadClear"
+                            data-t="download.clear"></button>
+                    <span class="dl-selected" id="downloadSelected"></span>
+                </div>
+                <span class="dl-status-msg" id="downloadStatus"></span>
+                <div class="dl-foot-right">
+                    <div class="dl-mode" role="group">
+                        <button class="dl-mode-btn" data-download-mode="queue"
+                                data-t="download.modeQueue"></button>
+                        <button class="dl-mode-btn" data-download-mode="parallel"
+                                data-t="download.modeParallel"></button>
+                    </div>
+                    <button class="btn secondary sm" data-action="download-cancel" id="downloadCancel"
+                            data-t="download.cancel" hidden></button>
+                    <button class="btn primary sm" data-action="download-start" id="downloadStart"
+                            data-t="download.download"></button>
+                </div>
+            </footer>
+        </aside>
+
+        <aside class="drawer about" id="aboutDrawer" hidden>
+            <div class="drawer-head">
+                <div>
+                    <h3 data-t="about.title"></h3>
+                    <p data-t="app.subtitle"></p>
+                </div>
+                <button class="icon-btn small" data-drawer-close data-tip="about.close">
+                    <svg class="icon"><use href="#i-close"></use></svg>
+                </button>
+            </div>
+
+            <div class="drawer-body">
+                <div class="about-hero">
+                    <div class="about-mark">
+                        <svg class="icon"><use href="#i-brand"></use></svg>
+                    </div>
+                    <div class="about-title" data-t="app.title"></div>
+                    <span class="about-version">v2.0.0</span>
+                </div>
+                <p class="about-copy" data-t="about.body"></p>
+                <button class="btn about-support" data-action="openRepo">
+                    <svg class="icon"><use href="#i-discord"></use></svg>
+                    <span data-t="about.support"></span>
+                </button>
+                <button class="btn primary ap-close" data-drawer-close data-t="about.close"></button>
+            </div>
+        </aside>
+    </div>
+
+    <svg class="sprite" aria-hidden="true" focusable="false">
+        <symbol id="i-brand" viewBox="0 0 24 24">
+            <path d="M2.5 9.2 12 4.8l9.5 4.4L12 13.6 2.5 9.2z" />
+            <path d="M6.4 11.4v4.3c0 1.4 2.5 2.5 5.6 2.5s5.6-1.1 5.6-2.5v-4.3" />
+            <path d="M21.5 9.2v5.9" />
+            <circle cx="21.5" cy="16.2" r="1.1" />
+        </symbol>
+        <symbol id="i-download" viewBox="0 0 24 24">
+            <path d="M12 3v12M7 11l5 5 5-5M5 21h14" />
+        </symbol>
+        <symbol id="i-sliders" viewBox="0 0 24 24">
+            <path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6" />
+        </symbol>
+        <symbol id="i-discord" viewBox="0 0 24 24">
+            <path d="M20.3 4.7A19 19 0 0 0 15.6 3l-.6 1.2a17 17 0 0 0-6 0L8.4 3a19 19 0 0 0-4.7 1.7C1.3 9.1.6 13.3.9 17.4a19 19 0 0 0 5.7 2.9l1.2-1.9-1.7-.8.4-.3a13.5 13.5 0 0 0 11 0l.4.3-1.7.8 1.2 1.9a19 19 0 0 0 5.7-2.9c.4-4.8-.7-8.9-2.8-12.7zM8.7 14.8c-1.1 0-2-1-2-2.3s.9-2.3 2-2.3 2 1 2 2.3-.9 2.3-2 2.3zm6.6 0c-1.1 0-2-1-2-2.3s.9-2.3 2-2.3 2 1 2 2.3-.9 2.3-2 2.3z" />
+        </symbol>
+        <symbol id="i-info" viewBox="0 0 24 24">
+            <path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01" />
+        </symbol>
+        <symbol id="i-logout" viewBox="0 0 24 24">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />
+        </symbol>
+        <symbol id="i-power" viewBox="0 0 24 24">
+            <path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10" />
+        </symbol>
+        <symbol id="i-user" viewBox="0 0 24 24">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
+        </symbol>
+        <symbol id="i-tag" viewBox="0 0 24 24">
+            <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82zM7 7h.01" />
+        </symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24">
+            <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+        </symbol>
+        <symbol id="i-sort" viewBox="0 0 24 24">
+            <path d="M4 6h16M4 12h10M4 18h6M18 9l3 3 3-3" />
+        </symbol>
+        <symbol id="i-close" viewBox="0 0 24 24">
+            <path d="M18 6L6 18M6 6l12 12" />
+        </symbol>
+        <symbol id="i-chevron" viewBox="0 0 24 24">
+            <path d="M6 9l6 6 6-6" />
+        </symbol>
+        <symbol id="i-ticket" viewBox="0 0 24 24">
+            <path d="M3 8h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4V8zM9 8v10" />
+        </symbol>
+        <symbol id="i-folder" viewBox="0 0 24 24">
+            <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
+        </symbol>
+    </svg>
+
+    <div class="select-menu" id="selectMenu" role="listbox" hidden></div>
+
+    <script src="studio.js?v=20261106l"></script>
+</body>
+</html>
+
+
+
+
+
+

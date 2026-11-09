@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SVU monogram</title>
+<style>
+  @font-face{font-family:"Orbitron";src:url("../Fonts/Orbitron.ttf") format("truetype");font-weight:400 900;font-style:normal;font-display:block}
+  @font-face{font-family:"Lemonada";src:url("../Fonts/Lemonada.ttf") format("truetype");font-weight:300 700;font-style:normal;font-display:block}
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:360px;height:132px;background:transparent;overflow:hidden}
+
+  :root{ --acc:99 236 217; }
+
+  /* The exact slim hexagon: 17%/83% flat top, height 132. */
+  .hex{position:relative;width:360px;height:132px;
+    clip-path:polygon(17% 0,83% 0,100% 50%,83% 100%,17% 100%,0 50%);
+    -webkit-clip-path:polygon(17% 0,83% 0,100% 50%,83% 100%,17% 100%,0 50%);}
+
+  /* The fixed dark backdrop the glass frosts. Baking it (instead of the live
+     desktop) is what lets the app look identical to the web preview. */
+  .backdrop{position:absolute;inset:0;
+    background:
+      radial-gradient(120% 80% at 22% 0%,#18323f,transparent 52%),
+      radial-gradient(100% 80% at 88% 18%,#2e1e40,transparent 52%),
+      radial-gradient(120% 90% at 50% 110%,#0a232a,transparent 55%),
+      linear-gradient(160deg,#0c1018,#0a0d14 60%,#05070b);}
+
+  .rim{position:absolute;inset:0;clip-path:inherit;
+    background:linear-gradient(180deg,rgb(var(--acc)/.95),rgb(var(--acc)/.4) 48%,rgb(var(--acc)/.85));}
+  .body{position:absolute;inset:3.8px;clip-path:inherit;
+    background:rgb(var(--acc)/.72);
+    -webkit-backdrop-filter:blur(14px) saturate(150%);backdrop-filter:blur(14px) saturate(150%);}
+  .tint{position:absolute;inset:3.8px;clip-path:inherit;background:rgba(5,9,16,.66);pointer-events:none}
+  .lockup{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:10px;z-index:3;pointer-events:none;text-align:center;padding:0 26px}
+  .mark{font-family:"Orbitron","Segoe UI",sans-serif;font-size:30px;font-weight:300;letter-spacing:16px;text-indent:16px;
+    line-height:1;color:rgb(var(--acc));filter:drop-shadow(0 0 12px rgb(var(--acc)/.5));}
+  .tag{font-family:"Lemonada","Segoe UI",sans-serif;font-size:16px;line-height:1.6;direction:rtl;
+    color:rgba(255,255,255,.96);text-shadow:0 1px 6px rgba(0,0,0,.55)}
+  .rule{width:122px;height:2px;border-radius:3px;
+    background:linear-gradient(90deg,transparent,rgb(var(--acc)),transparent);box-shadow:0 0 10px rgb(var(--acc)/.6)}
+  .shine{position:absolute;inset:0;z-index:4;pointer-events:none;
+    background:linear-gradient(105deg,transparent 35%,rgb(var(--acc)/.42) 50%,transparent 65%);
+    transform:translateX(-120%);mix-blend-mode:screen;animation:tagShine 3.4s ease-in-out infinite}
+  @keyframes tagShine{0%,18%{transform:translateX(-120%)}55%{transform:translateX(120%)}100%{transform:translateX(120%)}}
+</style>
+</head>
+<body>
+  <div class="hex">
+    <div class="backdrop"></div>
+    <div class="rim"></div><div class="body"></div><div class="tint"></div>
+    <div class="lockup">
+      <div class="mark">SVU</div>
+      <div class="tag" dir="rtl" lang="ar">اعبر حدود الزمان والمكان</div>
+      <div class="rule"></div>
+    </div>
+    <div class="shine"></div>
+  </div>
+<script>
+  function toRgb(h){
+    h = h.replace('#','');
+    if (h.length === 3) h = h.split('').map(function(c){return c+c;}).join('');
+    return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)].join(' ');
+  }
+  window.setAccent = function(h){ document.documentElement.style.setProperty('--acc', toRgb(h)); };
+  var q = new URLSearchParams(location.search).get('accent');
+  if (q) window.setAccent(q);
+</script>
+</body>
+</html>

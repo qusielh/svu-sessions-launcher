@@ -1,0 +1,161 @@
+<Window x:Class="SvuSessionsLauncher.Views.ChatWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
+        Title="SVU Session"
+        Icon="pack://application:,,,/Assets/app.ico"
+        Height="740" Width="1120"
+        MinHeight="420" MinWidth="260"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="CanResize"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="False"
+        FontFamily="{DynamicResource Font.App}"
+        Background="{DynamicResource Brush.ChatBackground}">
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="34"
+                            ResizeBorderThickness="6"
+                            GlassFrameThickness="0"
+                            CornerRadius="0"
+                            UseAeroCaptionButtons="False" />
+    </shell:WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <Style x:Key="CaptionButton" TargetType="Button">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="Height" Value="34" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="Foreground" Value="{DynamicResource Brush.Muted}" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+            <Setter Property="IsTabStop" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Brush.SurfaceAlt}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Text}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Brush.Border}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="CloseCaptionButton" TargetType="Button" BasedOn="{StaticResource CaptionButton}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="{TemplateBinding Background}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Brush.Danger}" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource Brush.DangerHover}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="34" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Border Grid.Row="0"
+                Background="{DynamicResource Brush.ChatBackground}"
+                BorderBrush="{DynamicResource Brush.Border}"
+                BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0"
+                            Margin="12,0,0,0"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            IsHitTestVisible="False">
+                    <Path Width="14" Height="14"
+                          Data="{DynamicResource Icon.Brand}"
+                          Fill="{DynamicResource Brush.Primary}"
+                          Stretch="Uniform" />
+                    <TextBlock Margin="8,0,0,0"
+                               VerticalAlignment="Center"
+                               FontSize="12"
+                               FontWeight="SemiBold"
+                               Foreground="{DynamicResource Brush.Muted}"
+                               Text="SVU Session" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal">
+                    <Button x:Name="MinimizeButton"
+                            Click="Minimize_Click"
+                            Style="{StaticResource CaptionButton}"
+                            ToolTip="Minimize"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Path Width="10" Height="1"
+                              Data="M 0,0 L 10,0"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeEndLineCap="Round"
+                              StrokeStartLineCap="Round"
+                              StrokeThickness="1.4" />
+                    </Button>
+                    <Button x:Name="MaximizeButton"
+                            Click="Maximize_Click"
+                            Style="{StaticResource CaptionButton}"
+                            ToolTip="Maximize"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Path x:Name="MaximizeGlyph"
+                              Width="10" Height="10"
+                              Data="M 0,0 L 9,0 L 9,9 L 0,9 Z"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeLineJoin="Round"
+                              StrokeThickness="1.3" />
+                    </Button>
+                    <Button x:Name="CloseButton"
+                            Click="Close_Click"
+                            Style="{StaticResource CloseCaptionButton}"
+                            ToolTip="Close"
+                            shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                        <Path Width="10" Height="10"
+                              Data="M 0,0 L 10,10 M 10,0 L 0,10"
+                              Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
+                              StrokeEndLineCap="Round"
+                              StrokeStartLineCap="Round"
+                              StrokeThickness="1.4" />
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <Grid Grid.Row="1">
+            <!-- Visible from the start. DefaultBackgroundColor is set before the core
+                 initializes, so the surface matches the loader instead of flashing
+                 black. Keeping it hidden until after init can leave the native
+                 surface unpainted on this machine. -->
+            <wv2:WebView2 x:Name="Web" />
+        </Grid>
+    </Grid>
+</Window>

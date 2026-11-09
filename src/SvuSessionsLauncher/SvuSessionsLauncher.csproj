@@ -1,0 +1,57 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>SvuSessionsLauncher</RootNamespace>
+    <AssemblyName>SvuSessionsLauncher</AssemblyName>
+    <AssemblyTitle>SVU Sessions Launcher</AssemblyTitle>
+    <Product>SVU Sessions Launcher</Product>
+    <Company>Qusie</Company>
+    <Description>Student-only launcher for Syrian Virtual University online sessions.</Description>
+    <Copyright>Recreated by Qusie.</Copyright>
+    <Version>2.0.0</Version>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\app.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+        <None Update="Assets\chat\**\*" CopyToOutputDirectory="PreserveNewest" />
+        <None Update="Assets\studio\**\*" CopyToOutputDirectory="PreserveNewest" />
+        <None Update="Assets\login\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Assets\Fonts\**\*" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4258.31" />
+  </ItemGroup>
+
+  <!--
+    The tutor voice stream uses the DSP Group TrueSpeech ACM codec, which ships only as a
+    32-bit binary (SysWOW64\tssoft32.acm) while this app runs 64-bit. SvuVoiceHelper is a
+    tiny 32-bit decode/play helper the app launches and feeds with voice frames. It is built
+    alongside this project and copied next to the launcher executable so it can be found at
+    runtime. The helper only ever decodes and plays — it never opens a capture device.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\SvuVoiceHelper\SvuVoiceHelper.csproj">
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+  <Target Name="CopyVoiceHelper" AfterTargets="Build">
+    <ItemGroup>
+      <VoiceHelperFiles Include="$(MSBuildThisFileDirectory)..\SvuVoiceHelper\bin\$(Configuration)\net10.0-windows\win-x86\SvuVoiceHelper.*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(VoiceHelperFiles)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>
