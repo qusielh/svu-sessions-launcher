@@ -83,7 +83,18 @@ public sealed class AppSettings
             if (File.Exists(SettingsPath))
             {
                 var json = File.ReadAllText(SettingsPath);
-                return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+
+                // Presets now always derive the header from the accent. Clear
+                // any legacy header override so an old preset pick (for example
+                // Midnight's ink header) cannot keep a second hue.
+                if (!string.Equals(settings.Header, "auto", StringComparison.OrdinalIgnoreCase))
+                {
+                    settings.Header = "auto";
+                    settings.Save();
+                }
+
+                return settings;
             }
         }
         catch

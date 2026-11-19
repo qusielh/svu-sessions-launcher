@@ -127,20 +127,16 @@ public sealed class LinkConnection : IDisposable
             while (_route == 0 && _running)
             {
                 _routeEvent.Reset();
-                SvuDiagnostics("handshake begin"); // SVUDBG
                 if (!InitiateHandShake(_tryConnect))
                 {
-                    SvuDiagnostics("handshake failed"); // SVUDBG
                     break;
                 }
                 Message? message = RecvMessage();
                 if (message == null || message.GetRequest() != Message.Route)
                 {
-                    SvuDiagnostics("handshake: no route reply"); // SVUDBG
                     break;
                 }
                 _route = message.GetRoute();
-                SvuDiagnostics($"route reply route={_route}"); // SVUDBG
                 if (_route == Connection.RouteNeedProxyAuthorization)
                 {
                     break;
@@ -159,14 +155,12 @@ public sealed class LinkConnection : IDisposable
                     break;
                 }
             }
-            SvuDiagnostics($"handshake complete route={_route}, entering receive loop"); // SVUDBG
             RunReceive();
         }
         catch (Exception exception)
         {
             DispatchError(exception);
         }
-        SvuDiagnostics("connection loop ended"); // SVUDBG
         _running = false;
         AbortConnection(true);
         _routeEvent.Set();
@@ -305,7 +299,6 @@ public sealed class LinkConnection : IDisposable
 
     private void SendMessage(Message message, bool encrypt)
     {
-        SvuDiagnostics("OUT " + Describe(message) + (encrypt ? " enc" : " plain") + $" cipher={(_cipher != null)} useCipher={_useCipher} type={ConnectionTypeName}"); // SVUDBG
         lock (_sendLock)
         {
             int attempts = 0;
@@ -352,7 +345,6 @@ public sealed class LinkConnection : IDisposable
             Message message = new Message(0, 0, null);
             message.ReadFrom(input);
             message.Decrypt(_cipher);
-            SvuDiagnostics("IN  " + Describe(message) + $" cipher={(_cipher != null)} useCipher={_useCipher} type={ConnectionTypeName}"); // SVUDBG
             return message;
         }
         catch (Exception exception)
@@ -471,49 +463,6 @@ public sealed class LinkConnection : IDisposable
     {
         Failed?.Invoke(this, "caught:" + exception);
     }
-
-    // SVUDBG ---------------------------------------------------------------
-    // Diagnostic dump of one protocol frame for the session-debug.log. Reads
-    // only already-parsed header fields plus a best-effort string decode of the
-    // body; never throws and never mutates the message.
-    private static void SvuDiagnostics(string message)
-    {
-        SvuSessionsLauncher.Services.SvuDebugLog.Write("CONN", message);
-    }
-
-    private static string Describe(Message message)
-    {
-        var builder = new StringBuilder();
-        builder.Append("ctl=").Append(message.GetControl())
-            .Append(" req=").Append(message.GetRequest())
-            .Append(" flags=").Append(message.GetFlags())
-            .Append(" route=").Append(message.GetRoute())
-            .Append(" inflated=").Append(message.GetInflatedSize())
-            .Append(" len=").Append(message.BufferLength);
-
-        // Best-effort: text-bearing frames marshal a 2-byte count then
-        // null-terminated strings. Only attempt when the body looks structured.
-        byte[]? body = message.Buffer;
-        if (body != null && message.BufferLength >= 2)
-        {
-            try
-            {
-                int count = BufferConversion.BytesToInt(body, 0, 2);
-                if (count > 0 && count <= 64)
-                {
-                    string[] fields = BufferConversion.GetStrings(body, 2, count);
-                    builder.Append(" fields=[").Append(string.Join("|", fields)).Append(']');
-                }
-            }
-            catch
-            {
-                // Not a string array; leave the raw length only.
-            }
-        }
-
-        return builder.ToString();
-    }
-    // SVUDBG ---------------------------------------------------------------
 
     public void Dispose()
     {

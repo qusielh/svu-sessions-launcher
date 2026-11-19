@@ -187,7 +187,7 @@ html.chat-preparing .app {
   visibility: visible;
 }
 
-/* ---- 1 آ· SVU monogram (wordmark) ---- */
+/* ---- 1 · SVU monogram (wordmark) ---- */
 
 .monogram {
   overflow: visible;
@@ -201,7 +201,7 @@ html.chat-preparing .app {
 }
 
 /* Recolour the wordmark gradient from the launcher's accent so the monogram
-   matches the chosen preset (mint, rose, grape, â€¦) instead of brand mint. */
+   matches the chosen preset (mint, rose, grape, …) instead of brand mint. */
 #monoGrad stop:nth-child(1) {
   stop-color: color-mix(in srgb, var(--accent) 78%, #ffffff);
 }
@@ -372,7 +372,7 @@ html.chat-preparing .app {
   transform: translateY(1px);
 }
 
-/* ---- 2 آ· Graduate cap ---- */
+/* ---- 2 · Graduate cap ---- */
 
 #capGrad stop:nth-child(1) {
   stop-color: color-mix(in srgb, var(--accent) 78%, #ffffff);
@@ -447,7 +447,7 @@ html.chat-preparing .app {
   }
 }
 
-/* ---- 3 آ· Open book ---- */
+/* ---- 3 · Open book ---- */
 
 .book {
   animation: bookIn 3.2s ease-in-out infinite;
@@ -534,7 +534,7 @@ html.chat-preparing .app {
   }
 }
 
-/* ---- 4 آ· Laurel wreath ---- */
+/* ---- 4 · Laurel wreath ---- */
 
 .wreath-stem {
   fill: none;
@@ -639,105 +639,7 @@ html.chat-preparing .app {
   }
 }
 
-/* ---- 1 آ· SVU monogram (wordmark) ---- */
-
-.monogram {
-  overflow: visible;
-}
-
-/* Recolour the wordmark gradient from the launcher's accent so the monogram
-   matches the chosen preset (mint, rose, grape, â€¦) instead of brand mint. */
-#monoGrad stop:nth-child(1) {
-  stop-color: color-mix(in srgb, var(--accent) 78%, #ffffff);
-}
-
-#monoGrad stop:nth-child(2) {
-  stop-color: var(--accent);
-}
-
-#monoGrad stop:nth-child(3) {
-  stop-color: color-mix(in srgb, var(--accent) 74%, #000000);
-}
-
-.mono-letter.l0 { animation: monoIn 3.1s ease-in-out infinite; animation-delay: 0s; animation-fill-mode: backwards; }
-.mono-letter.l1 { animation: monoIn 3.1s ease-in-out infinite; animation-delay: 0.18s; animation-fill-mode: backwards; }
-.mono-letter.l2 { animation: monoIn 3.1s ease-in-out infinite; animation-delay: 0.36s; animation-fill-mode: backwards; }
-
-@keyframes monoIn {
-  0% {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  16% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  82% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-}
-
-.mono-rule {
-  stroke: var(--accent);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-dasharray: 172;
-  stroke-dashoffset: 172;
-  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 55%, transparent));
-  animation: monoRule 3.1s ease-in-out infinite;
-}
-
-@keyframes monoRule {
-  0% {
-    stroke-dashoffset: 172;
-    opacity: 0.2;
-  }
-  26% {
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
-  82% {
-    stroke-dashoffset: 0;
-    opacity: 1;
-  }
-  100% {
-    stroke-dashoffset: 0;
-    opacity: 0;
-  }
-}
-
-.mono-dot {
-  fill: var(--accent);
-  transform-box: fill-box;
-  transform-origin: center;
-  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--accent) 70%, transparent));
-  animation: monoDot 3.1s ease-in-out infinite;
-}
-
-@keyframes monoDot {
-  0%, 40% {
-    opacity: 0;
-    transform: scale(0.4);
-  }
-  62% {
-    opacity: 1;
-    transform: scale(1);
-  }
-  82% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-}
-
-/* ---- 5 آ· University tagline ---- */
+/* ---- 5 · University tagline ---- */
 
 .tagline {
   position: relative;
@@ -997,6 +899,7 @@ html.chat-preparing .app {
   height: 20px;
   color: var(--muted);
   opacity: .85;
+  transition: color 0.18s ease, opacity 0.18s ease;
 }
 
 .member .m-mic.mic-1 {
@@ -1123,14 +1026,6 @@ html.chat-preparing .app {
 .empty-sub {
   margin: 6px 0 0;
   font-size: 13.5px;
-}
-
-.info-line {
-  align-self: center;
-  margin: 6px 0;
-  font-size: 12.5px;
-  color: var(--faint);
-  font-style: italic;
 }
 
 .msg {

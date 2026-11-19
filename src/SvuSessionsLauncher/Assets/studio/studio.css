@@ -349,7 +349,7 @@ html[dir="ltr"] .rail-btn[data-action="signOut"] .icon {
     inset-inline: 0;
     top: 0;
     height: 3px;
-    background: linear-gradient(90deg, var(--header-a), var(--header-b) 55%, var(--header-c));
+    background: linear-gradient(90deg, var(--primary-hover), var(--primary) 46%, var(--primary-pressed));
 }
 
 html[dir="rtl"] .app {
@@ -360,7 +360,7 @@ html[dir="rtl"] .app {
 }
 
 html[dir="rtl"] .masthead::after {
-    background: linear-gradient(270deg, var(--header-a), var(--header-b) 55%, var(--header-c));
+    background: linear-gradient(270deg, var(--primary-hover), var(--primary) 46%, var(--primary-pressed));
 }
 
 html[dir="rtl"] .about-hero {
@@ -410,7 +410,7 @@ html[data-theme="light"] .masthead-glow {
     height: 38px;
     flex: none;
     border-radius: 3px;
-    background: linear-gradient(180deg, var(--header-a), var(--header-b) 55%, var(--header-c));
+    background: linear-gradient(180deg, var(--primary-hover), var(--primary) 46%, var(--primary-pressed));
     box-shadow: 0 0 18px -4px var(--primary);
 }
 
@@ -787,17 +787,18 @@ html[data-lang="en"] .field > label {
 }
 
 .refresh-spin {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    position: relative;
     width: 14px;
     height: 14px;
     flex: none;
-    transform-origin: center;
 }
 
-.refresh.is-loading .refresh-spin {
-    animation: spin 0.9s linear infinite;
+.refresh-spin .icon {
+    position: absolute;
+    inset: 0;
+    width: 14px;
+    height: 14px;
+    shape-rendering: geometricPrecision;
 }
 
 .refresh:disabled {
@@ -1272,6 +1273,15 @@ html[data-lang="ar"] .ticket-date {
     height: 20px;
 }
 
+.list-state.is-error .state-icon {
+    border-color: color-mix(in srgb, var(--danger) 38%, transparent);
+    color: var(--danger);
+}
+
+.list-state.is-error p {
+    color: var(--text);
+}
+
 .spinner {
     display: block;
     width: 32px;
@@ -1520,15 +1530,15 @@ html[dir="rtl"] .drawer {
 }
 
 .about-support:hover:not(:disabled) {
-    border-color: #5865f2;
-    background: rgba(88, 101, 242, 0.1);
+    border-color: var(--primary);
+    background: var(--primary-soft);
     color: var(--text);
 }
 
 .about-support .icon {
     width: 19px;
     height: 19px;
-    color: #5865f2;
+    color: var(--primary);
 }
 
 .drawer-head {
@@ -1587,19 +1597,20 @@ html[data-lang="en"] .ap-label {
 
 .preset {
     padding: 4px;
-    border: 2px solid transparent;
+    border: 2px solid var(--preset-border, transparent);
     border-radius: 12px;
-    background: var(--surface-alt);
+    background: var(--preset-bg, var(--surface-alt));
+    color: var(--preset-text, var(--text));
     text-align: center;
     transition: border-color 0.16s ease;
 }
 
 .preset:hover {
-    border-color: var(--border-strong);
+    border-color: var(--preset-border-strong, var(--border-strong));
 }
 
 .preset.is-active {
-    border-color: var(--primary);
+    border-color: var(--preset-accent, var(--primary));
 }
 
 .preset-swatch {
@@ -1616,7 +1627,7 @@ html[data-lang="en"] .ap-label {
 
 .preset-theme {
     display: block;
-    color: var(--muted);
+    color: var(--preset-muted, var(--muted));
     font-size: 12px;
 }
 
@@ -1833,16 +1844,33 @@ html[data-lang="en"] .dl-field > span {
 .dl-select.is-loading::after {
     content: "";
     position: absolute;
-    top: 50%;
-    inset-inline-end: 9px;
-    width: 12px;
-    height: 12px;
-    margin-top: -6px;
-    border: 2px solid var(--border);
-    border-top-color: var(--primary);
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
+    inset: 0;
+    padding: 2px;
+    border-radius: 9px;
+    background: conic-gradient(
+        from var(--beam-angle),
+        transparent 0deg,
+        transparent 220deg,
+        color-mix(in srgb, var(--primary) 25%, transparent) 270deg,
+        color-mix(in srgb, var(--primary) 70%, transparent) 320deg,
+        var(--primary) 340deg,
+        color-mix(in srgb, var(--primary) 35%, white) 350deg,
+        #fff 354deg,
+        color-mix(in srgb, var(--primary) 35%, white) 358deg,
+        transparent 360deg
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: border-beam 1.15s linear infinite;
     pointer-events: none;
+}
+
+.dl-select.is-loading .select-trigger {
+    box-shadow:
+        0 0 0 1px color-mix(in srgb, var(--primary) 18%, transparent),
+        0 0 14px -4px color-mix(in srgb, var(--primary) 75%, white);
 }
 
 .dl-list-wrap {
@@ -1861,7 +1889,7 @@ html[data-lang="en"] .dl-field > span {
 .dl-head {
     display: grid;
     flex: none;
-    grid-template-columns: 30px 60px minmax(110px, 1.2fr) 64px 54px 126px 42px;
+    grid-template-columns: 30px 60px minmax(110px, 1.2fr) 64px 54px 126px 108px;
     gap: 9px;
     align-items: center;
     padding: 8px 12px;
@@ -1882,10 +1910,39 @@ html[data-lang="en"] .dl-head {
     overflow-y: auto;
 }
 
+.dl-group {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 7px 12px;
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--primary) 9%, var(--surface));
+    color: var(--primary);
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.dl-group-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dl-group-count {
+    flex: none;
+    color: var(--muted);
+    font-weight: 600;
+}
+
 .dl-row {
     position: relative;
     display: grid;
-    grid-template-columns: 30px 60px minmax(110px, 1.2fr) 64px 54px 126px 42px;
+    grid-template-columns: 30px 60px minmax(110px, 1.2fr) 64px 54px 126px 108px;
     gap: 9px;
     align-items: center;
     min-height: 41px;
@@ -1899,7 +1956,7 @@ html[data-lang="en"] .dl-head {
 }
 
 .dl-row.is-selected {
-    background: var(--selection);
+    background: color-mix(in srgb, var(--primary) 8%, var(--surface));
 }
 
 .dl-row:hover {
@@ -1978,6 +2035,10 @@ html[data-lang="en"] .dl-head {
     stroke-dashoffset: 0;
 }
 
+.dl-check.is-interactive input:not(:checked) + .check-box {
+    animation: check-unpop 0.18s ease-out;
+}
+
 .dl-check:hover input:checked + .check-box {
     background: var(--primary-hover);
 }
@@ -2028,6 +2089,21 @@ html[data-lang="en"] .dl-head {
     font-size: 12px;
     font-weight: 700;
     line-height: 1;
+}
+
+.dl-label {
+    overflow: hidden;
+    font-size: 11px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dl-row[data-status="failed"] .dl-label {
+    color: var(--danger);
+}
+
+.dl-row[data-status="done"] .dl-label {
+    color: var(--ok-fg);
 }
 
 .dl-row[data-status="done"] .dl-mark {
@@ -2096,7 +2172,13 @@ html[data-lang="en"] .dl-head {
 }
 
 .dl-state.is-error {
+    flex-direction: column;
+    gap: 12px;
     color: var(--danger);
+}
+
+.dl-state.is-error > span {
+    max-width: 320px;
 }
 
 .dl-state .spinner {
@@ -2189,12 +2271,12 @@ html[data-lang="en"] .dl-head {
 
 .ticket:hover {
     border-color: var(--primary);
-    background: var(--primary-soft);
+    background: color-mix(in srgb, var(--primary) 10%, var(--surface));
     box-shadow: var(--shadow-lift);
 }
 
 .dl-row:hover {
-    background: var(--primary-soft);
+    background: color-mix(in srgb, var(--primary) 12%, var(--surface));
 }
 
 .chip-btn:hover {
@@ -2243,9 +2325,30 @@ html[data-lang="en"] .dl-head {
     }
 }
 
+@keyframes check-unpop {
+    0% {
+        transform: scale(1.08);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@property --beam-angle {
+    syntax: "<angle>";
+    initial-value: 0deg;
+    inherits: false;
+}
+
 @keyframes spin {
     to {
         transform: rotate(360deg);
+    }
+}
+
+@keyframes border-beam {
+    to {
+        --beam-angle: 360deg;
     }
 }
 
@@ -2355,6 +2458,59 @@ html[data-lang="en"] .dl-head {
     }
 }
 
+@keyframes studio-drawer-out {
+    from {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translate(-50%, -48%) scale(0.97);
+    }
+}
+
+@keyframes studio-drawer-out-rtl {
+    from {
+        opacity: 1;
+        transform: translate(50%, -50%) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translate(50%, -48%) scale(0.97);
+    }
+}
+
+@keyframes studio-backdrop-out {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+@keyframes studio-menu-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@keyframes studio-menu-out {
+    from {
+        opacity: 1;
+        transform: none;
+    }
+    to {
+        opacity: 0;
+        transform: translateY(-4px) scale(0.985);
+    }
+}
+
 @keyframes studio-backdrop-in {
     from {
         opacity: 0;
@@ -2420,6 +2576,26 @@ html[dir="rtl"] .drawer:not([hidden]) {
     animation: studio-backdrop-in 0.18s ease both;
 }
 
+.drawer.is-closing {
+    animation: studio-drawer-out 0.16s ease forwards;
+}
+
+html[dir="rtl"] .drawer.is-closing {
+    animation-name: studio-drawer-out-rtl;
+}
+
+#drawerBackdrop.is-closing {
+    animation: studio-backdrop-out 0.16s ease forwards;
+}
+
+#selectMenu:not([hidden]) {
+    animation: studio-menu-in 0.14s ease both;
+}
+
+#selectMenu.is-closing {
+    animation: studio-menu-out 0.13s ease forwards;
+}
+
 .ticket {
     transition: border-color 0.16s ease, background-color 0.16s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
@@ -2438,6 +2614,7 @@ html[dir="rtl"] .drawer:not([hidden]) {
 .chip-btn,
 .preset,
 .segmented button,
+.dl-mode-btn,
 .folder-btn {
     transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.12s ease, opacity 0.12s ease;
 }
@@ -2450,6 +2627,7 @@ html[dir="rtl"] .drawer:not([hidden]) {
 
 .chip-btn:active,
 .segmented button:active,
+.dl-mode-btn:active,
 .preset:active {
     transform: scale(0.97);
 }

@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using SvuSessionsLauncher.Services;
 
 namespace SvuSessionsLauncher.ViewModels;
 
@@ -8,7 +9,8 @@ namespace SvuSessionsLauncher.ViewModels;
 /// </summary>
 public sealed class RelayCommand : ICommand
 {
-    private readonly Action _execute;
+    private readonly Action? _execute;
+    private readonly Func<Task>? _executeAsync;
     private readonly Func<bool>? _canExecute;
     private bool _isRunning;
 
@@ -20,8 +22,7 @@ public sealed class RelayCommand : ICommand
 
     public RelayCommand(Func<Task> execute, Func<bool>? canExecute = null)
     {
-        ArgumentNullException.ThrowIfNull(execute);
-        _execute = async () => await execute();
+        _executeAsync = execute ?? throw new ArgumentNullException(nameof(execute));
         _canExecute = canExecute;
     }
 
@@ -40,7 +41,20 @@ public sealed class RelayCommand : ICommand
         RaiseCanExecuteChanged();
         try
         {
-            _execute();
+            if (_executeAsync is not null)
+            {
+                await _executeAsync();
+            }
+            else
+            {
+                _execute!();
+            }
+        }
+        catch (Exception ex)
+        {
+            // An async command must never crash the dispatcher; surface the
+            // failure in the diagnostics log instead.
+            Log.Write($"command failed: {ex}");
         }
         finally
         {

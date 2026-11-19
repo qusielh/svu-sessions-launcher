@@ -241,6 +241,11 @@ public partial class App : Application
 
                     // Releasing the session lock lets the launcher join again.
                     mainVm.IsSessionActive = false;
+                    if (chat.EndedUnexpectedly)
+                    {
+                        mainVm.NotifySessionEnded();
+                    }
+
                     Log.Write("session chat closed");
 
                     if (!shuttingDown)

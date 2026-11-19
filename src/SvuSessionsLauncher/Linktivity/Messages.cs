@@ -60,7 +60,6 @@ public static class Messages
     public const int RequestControlCommand = 3011;
     public const int RequestArchive = 5000;
     public const int RequestGroupJoin = 4004;
-    public const int RequestDistribute = 4001;
 
     // CONTROL_START (2001) / CONTROL_STOP (2002) carry [u16 index][u16 value]
     // (Messages.marshallControlUpdateRequest -> marshallControlUpdate(n, val, 6,
@@ -214,17 +213,6 @@ public static class Messages
     // control=0 (manager), request=3010, payload [index][on?1:0]. Sent distributed.
     public static Message MarshallAcceptControlRequest(int index, bool enabled) =>
         MarshallControlUpdate(index, enabled ? 1 : 0, ControlManager, RequestAcceptControl, null);
-
-    // Messages.marshallSignalRequest(String, String) -> newer clients wrap a
-    // Message inside a DISTRIBUTE (Messages.marshallDistributeRequest). The
-    // distributed envelope is a Chain(68) carrying a peer-list header plus the
-    // embedded message frame; this helper exposes only the signal Message so the
-    // caller can route it through the engine's own distribute path.
-    public static Message MarshallSignalRequest(string value, string? target)
-    {
-        string?[] fields = target == null ? new string?[] { value } : new string?[] { value, target };
-        return new Message(ControlManager, 3007, MarshallStrings(fields));
-    }
 
     // ---- Voice channel (control 2) ----
     // The voice applet's wire framing lives entirely inside the native DLL

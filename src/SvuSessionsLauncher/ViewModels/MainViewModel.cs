@@ -118,8 +118,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void RefreshFilters()
     {
-        // PERF PROBE
-        Log.Perf($"filter.refresh (count={Sessions.Count})", () => SessionsView.Refresh());
+        SessionsView.Refresh();
         OnPropertyChanged(nameof(HasFilters));
         OnPropertyChanged(nameof(ShowNoMatches));
     }
@@ -146,14 +145,12 @@ public sealed class MainViewModel : ObservableObject
 
             _settings.Theme = Theming.ThemeManager.Key(theme);
             _settings.Save();
-            // PERF PROBE
-            Log.Perf($"theme.apply (theme={_settings.Theme}, count={Sessions.Count})",
-                () => Theming.ThemeManager.Apply(
-                    theme,
-                    _settings.Accent,
-                    _settings.Header,
-                    _settings.Ink,
-                    _settings.AccentHex));
+            Theming.ThemeManager.Apply(
+                theme,
+                _settings.Accent,
+                _settings.Header,
+                _settings.Ink,
+                _settings.AccentHex);
             OnPropertyChanged();
             OnPropertyChanged(nameof(SelectedPresetOption));
         }
@@ -177,14 +174,12 @@ public sealed class MainViewModel : ObservableObject
             }
 
             _settings.Save();
-            // PERF PROBE
-            Log.Perf($"theme.apply (accent={value.Key}, count={Sessions.Count})",
-                () => Theming.ThemeManager.Apply(
-                    Theming.ThemeManager.Parse(_settings.Theme),
-                    value.Key,
-                    _settings.Header,
-                    _settings.Ink,
-                    _settings.AccentHex));
+            Theming.ThemeManager.Apply(
+                Theming.ThemeManager.Parse(_settings.Theme),
+                value.Key,
+                _settings.Header,
+                _settings.Ink,
+                _settings.AccentHex);
             BuildHeaderOptions();
             OnPropertyChanged();
             OnPropertyChanged(nameof(HeaderOptions));
@@ -217,14 +212,12 @@ public sealed class MainViewModel : ObservableObject
 
             _settings.Ink = key;
             _settings.Save();
-            // PERF PROBE
-            Log.Perf($"theme.apply (ink={key}, count={Sessions.Count})",
-                () => Theming.ThemeManager.Apply(
-                    Theming.ThemeManager.Parse(_settings.Theme),
-                    _settings.Accent,
-                    _settings.Header,
-                    key,
-                    _settings.AccentHex));
+            Theming.ThemeManager.Apply(
+                Theming.ThemeManager.Parse(_settings.Theme),
+                _settings.Accent,
+                _settings.Header,
+                key,
+                _settings.AccentHex);
             OnPropertyChanged();
         }
     }
@@ -259,6 +252,11 @@ public sealed class MainViewModel : ObservableObject
             _settings.Accent = Theming.ThemeManager.CustomAccent;
             _settings.AccentHex = normalized;
             _settings.Header = Theming.ThemeManager.AutoHeader;
+            Theming.ThemeManager.PreviewAccent(
+                _settings.Accent,
+                _settings.Header,
+                _settings.Ink,
+                _settings.AccentHex);
             return true;
         }
 
@@ -267,14 +265,12 @@ public sealed class MainViewModel : ObservableObject
         _settings.Header = Theming.ThemeManager.AutoHeader;
         _settings.Save();
 
-        // PERF PROBE
-        Log.Perf($"theme.apply (custom={normalized}, count={Sessions.Count})",
-            () => Theming.ThemeManager.Apply(
-                Theming.ThemeManager.Parse(_settings.Theme),
-                _settings.Accent,
-                _settings.Header,
-                _settings.Ink,
-                _settings.AccentHex));
+        Theming.ThemeManager.Apply(
+            Theming.ThemeManager.Parse(_settings.Theme),
+            _settings.Accent,
+            _settings.Header,
+            _settings.Ink,
+            _settings.AccentHex);
         BuildHeaderOptions();
 
         OnPropertyChanged(nameof(SelectedAccent));
@@ -317,14 +313,12 @@ public sealed class MainViewModel : ObservableObject
 
             _settings.Header = key;
             _settings.Save();
-            // PERF PROBE
-            Log.Perf($"theme.apply (header={key}, count={Sessions.Count})",
-                () => Theming.ThemeManager.Apply(
-                    Theming.ThemeManager.Parse(_settings.Theme),
-                    _settings.Accent,
-                    key,
-                    _settings.Ink,
-                    _settings.AccentHex));
+            Theming.ThemeManager.Apply(
+                Theming.ThemeManager.Parse(_settings.Theme),
+                _settings.Accent,
+                key,
+                _settings.Ink,
+                _settings.AccentHex);
             OnPropertyChanged();
             OnPropertyChanged(nameof(SelectedHeader));
             OnPropertyChanged(nameof(SelectedPresetOption));
@@ -340,13 +334,11 @@ public sealed class MainViewModel : ObservableObject
         _settings.Header = preset.Header;
         _settings.Save();
 
-        // PERF PROBE
-        Log.Perf($"theme.apply (preset={preset.Key}, count={Sessions.Count})",
-            () => Theming.ThemeManager.Apply(
-                preset.Theme,
-                preset.Accent,
-                preset.Header,
-                _settings.Ink));
+        Theming.ThemeManager.Apply(
+            preset.Theme,
+            preset.Accent,
+            preset.Header,
+            _settings.Ink);
         BuildHeaderOptions();
 
         OnPropertyChanged(nameof(IsDarkTheme));
@@ -658,7 +650,19 @@ public sealed class MainViewModel : ObservableObject
         _statusKey = key;
         _statusArg = arg;
         OnPropertyChanged(nameof(StatusMessage));
+        OnPropertyChanged(nameof(HasSessionLoadError));
+        OnPropertyChanged(nameof(ShowSessionsEmpty));
+        OnPropertyChanged(nameof(ShowNoMatches));
     }
+
+    /// <summary>
+    /// Maps a failed service call to the honest status key: a dropped
+    /// connection is not a server fault, so the status bar says so.
+    /// </summary>
+    private static string FailureStatus(WebDemoServiceException ex) =>
+        string.Equals(ex.Message, "login.error.network", StringComparison.Ordinal)
+            ? "login.error.network"
+            : "service.error";
 
     /// <summary>
     /// Read-only microphone state shown in the status bar. The microphone is
@@ -684,16 +688,25 @@ public sealed class MainViewModel : ObservableObject
     /// </summary>
     public bool ShowSessionCount => _sessionsLoaded && !IsLoadingSessions;
 
+    /// <summary>
+    /// True when the last fetch failed, so the list can show an error with a
+    /// Retry action instead of the misleading "no sessions" empty state.
+    /// </summary>
+    public bool HasSessionLoadError =>
+        Sessions.Count == 0
+        && (_statusKey == "service.error" || _statusKey == "login.error.network");
+
     /// <summary>Shows the "no sessions" hint only once a fetch has finished empty.</summary>
-    public bool ShowSessionsEmpty => !IsLoadingSessions && Sessions.Count == 0;
+    public bool ShowSessionsEmpty => !IsLoadingSessions && !HasSessionLoadError && Sessions.Count == 0;
 
     /// <summary>Shows the "no matches" hint when a search hides every row.</summary>
     public bool ShowNoMatches =>
-        !IsLoadingSessions && Sessions.Count > 0 && HasFilters && SessionsView.IsEmpty;
+        !IsLoadingSessions && !HasSessionLoadError && Sessions.Count > 0 && HasFilters && SessionsView.IsEmpty;
 
     private void RefreshSessionDerivedState()
     {
         OnPropertyChanged(nameof(SessionCount));
+        OnPropertyChanged(nameof(HasSessionLoadError));
         OnPropertyChanged(nameof(ShowSessionsEmpty));
         OnPropertyChanged(nameof(ShowNoMatches));
         UpdateCurrentTerm();
@@ -764,13 +777,9 @@ public sealed class MainViewModel : ObservableObject
 
         if (SessionsView is ListCollectionView listView)
         {
-            // PERF PROBE
-            Log.Perf($"sort.apply (column={_sortColumn ?? "none"}, count={Sessions.Count})", () =>
-            {
-                listView.CustomSort = _sortColumn is null
-                    ? null
-                    : new SessionComparer(_sortColumn, direction);
-            });
+            listView.CustomSort = _sortColumn is null
+                ? null
+                : new SessionComparer(_sortColumn, direction);
         }
     }
 
@@ -835,7 +844,7 @@ public sealed class MainViewModel : ObservableObject
         catch (WebDemoServiceException ex)
         {
             Log.Write($"Initialize failed: {ex}");
-            SetStatus("main.serviceError", ex.Message);
+            SetStatus(FailureStatus(ex));
         }
         catch (Exception ex)
         {
@@ -926,7 +935,7 @@ public sealed class MainViewModel : ObservableObject
             if (version == _courseLoadVersion)
             {
                 Log.Write($"Load courses failed: {ex}");
-                SetStatus("main.serviceError", ex.Message);
+                SetStatus(FailureStatus(ex));
                 IsLoadingSessions = false;
             }
         }
@@ -1003,15 +1012,11 @@ public sealed class MainViewModel : ObservableObject
             var loaded = new List<SessionInfo>(sessions.Count);
             foreach (var session in sessions)
             {
-                    loaded.Add(session);
+                loaded.Add(session);
             }
 
-            // PERF PROBE
-            Log.Perf($"load.populate (count={loaded.Count})", () =>
-            {
-                Sessions.AddRange(loaded);
-                RefreshSessionDerivedState();
-            });
+            Sessions.AddRange(loaded);
+            RefreshSessionDerivedState();
             if (Sessions.Count == 0)
             {
                 SetStatus("main.noSessions");
@@ -1033,7 +1038,7 @@ public sealed class MainViewModel : ObservableObject
             }
 
             Log.Write($"Load sessions failed (mode={mode.LocKey}): {ex}");
-            SetStatus("main.serviceError", ex.Message);
+            SetStatus(FailureStatus(ex));
         }
         catch (Exception ex)
         {
@@ -1057,6 +1062,12 @@ public sealed class MainViewModel : ObservableObject
             }
         }
     }
+
+    /// <summary>
+    /// Leaves a short notice in the status bar when a live session could not be
+    /// recovered and the chat windows had to close.
+    /// </summary>
+    public void NotifySessionEnded() => SetStatus("session.endedNetwork");
 
     /// <summary>Runs the live parameter sweep and records every raw reply.</summary>
     private async Task DiagnosticsAsync()

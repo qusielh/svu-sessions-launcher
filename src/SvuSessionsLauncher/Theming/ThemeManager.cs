@@ -54,10 +54,28 @@ public sealed record Accent(string Key, string Label, Color Primary, Color Hover
 public sealed record HeaderChoice(string Key, string Label, Color Primary);
 
 /// <summary>
-/// A whole-look preset: theme + accent + header radiant in one pick, so users get
-/// a great result without fiddling with each control.
+/// A whole-look preset: theme + accent in one pick, so users get a great result
+/// without fiddling with each control.
 /// </summary>
-public sealed record AppearancePreset(string Key, string Label, AppTheme Theme, string Accent, string Header);
+public sealed record AppearancePreset(string Key, string Label, AppTheme Theme, string Accent)
+{
+    /// <summary>
+    /// The header always follows the accent, so a preset never mixes two hues.
+    /// </summary>
+    public string Header => ThemeManager.AutoHeader;
+}
+
+/// <summary>
+/// The surface and text colours a preset tile should preview for its own theme.
+/// Kept in one place so the tiles cannot drift from the real palette.
+/// </summary>
+public sealed record ThemePalette(
+    Color Surface,
+    Color SurfaceAlt,
+    Color Border,
+    Color BorderStrong,
+    Color Text,
+    Color Muted);
 
 /// <summary>
 /// Runtime theming. The default palette lives in <c>Themes\Theme.xaml</c>, but
@@ -79,6 +97,11 @@ public static class ThemeManager
     /// live outside the resource system (e.g. a window's native title bar) can
     /// re-tint themselves.</summary>
     public static event Action? Changed;
+
+    /// <summary>Raised after <see cref="PreviewAccent"/> re-tints only the accent
+    /// resources, so pages hosted outside WPF (the chat WebView) can follow a
+    /// colour-picker drag before the picker commits.</summary>
+    public static event Action? PreviewChanged;
 
     public static IReadOnlyList<Accent> Accents { get; } = new[]
     {
@@ -134,36 +157,40 @@ public static class ThemeManager
         new HeaderChoice("ink", "Ink", H(0x1E293B)),
     };
 
-    /// <summary>Ready-made whole-look presets shown at the top of the appearance popup.</summary>
+    /// <summary>
+    /// Ready-made whole-look presets shown at the top of the appearance popup.
+    /// Every preset derives its header from its accent, so the swatch, the global
+    /// colour preview and the masthead always stay one coherent hue.
+    /// </summary>
     public static IReadOnlyList<AppearancePreset> Presets { get; } = new[]
     {
-        new AppearancePreset("teal-light", "Teal", AppTheme.Light, "teal", AutoHeader),
-        new AppearancePreset("emerald-light", "Emerald", AppTheme.Light, "emerald", "forest"),
-        new AppearancePreset("sky-light", "Sky", AppTheme.Light, "sky", "ocean"),
-        new AppearancePreset("rose-light", "Rose", AppTheme.Light, "rose", AutoHeader),
-        new AppearancePreset("grape-dark", "Grape", AppTheme.Dark, "purple", "grape"),
-        new AppearancePreset("midnight", "Midnight", AppTheme.Dark, "indigo", "ink"),
-        new AppearancePreset("sky-dark", "Sky Dark", AppTheme.Dark, "sky", "ocean"),
-        new AppearancePreset("graphite-light", "Graphite", AppTheme.Light, "slate", "graphite"),
-        new AppearancePreset("sunset-light", "Sunset", AppTheme.Light, "orange", "sunset"),
-        new AppearancePreset("ocean-dark", "Ocean", AppTheme.Dark, "cyan", "ocean"),
-        new AppearancePreset("gold-light", "Gold", AppTheme.Light, "gold", "amber"),
-        new AppearancePreset("mint-light", "Mint", AppTheme.Light, "mint", AutoHeader),
-        new AppearancePreset("terracotta-light", "Terracotta", AppTheme.Light, "terracotta", "sunset"),
-        new AppearancePreset("crimson-dark", "Crimson", AppTheme.Dark, "crimson", "rose"),
-        new AppearancePreset("wine-dark", "Wine", AppTheme.Dark, "wine", AutoHeader),
-        new AppearancePreset("steel-dark", "Steel", AppTheme.Dark, "steel", "graphite"),
-        new AppearancePreset("blue-light", "Blue", AppTheme.Light, "blue", "ocean"),
-        new AppearancePreset("indigo-light", "Indigo", AppTheme.Light, "indigo", "grape"),
-        new AppearancePreset("violet-dark", "Violet", AppTheme.Dark, "violet", AutoHeader),
-        new AppearancePreset("pink-light", "Pink", AppTheme.Light, "pink", "rose"),
-        new AppearancePreset("amber-light", "Amber", AppTheme.Light, "amber", "amber"),
-        new AppearancePreset("lime-light", "Lime", AppTheme.Light, "lime", "forest"),
-        new AppearancePreset("denim-dark", "Denim", AppTheme.Dark, "denim", "ocean"),
-        new AppearancePreset("magenta-dark", "Magenta", AppTheme.Dark, "magenta", "grape"),
-        new AppearancePreset("mint-dark", "Mint Dark", AppTheme.Dark, "mint", AutoHeader),
-        new AppearancePreset("steel-light", "Steel Light", AppTheme.Light, "steel", "graphite"),
-        new AppearancePreset("ocean-light", "Ocean Light", AppTheme.Light, "ocean", "ocean"),
+        new AppearancePreset("teal-light", "Teal", AppTheme.Light, "teal"),
+        new AppearancePreset("emerald-light", "Emerald", AppTheme.Light, "emerald"),
+        new AppearancePreset("sky-light", "Sky", AppTheme.Light, "sky"),
+        new AppearancePreset("rose-light", "Rose", AppTheme.Light, "rose"),
+        new AppearancePreset("grape-dark", "Grape", AppTheme.Dark, "purple"),
+        new AppearancePreset("midnight", "Midnight", AppTheme.Dark, "indigo"),
+        new AppearancePreset("sky-dark", "Sky Dark", AppTheme.Dark, "sky"),
+        new AppearancePreset("graphite-light", "Graphite", AppTheme.Light, "slate"),
+        new AppearancePreset("sunset-light", "Sunset", AppTheme.Light, "orange"),
+        new AppearancePreset("ocean-dark", "Ocean", AppTheme.Dark, "cyan"),
+        new AppearancePreset("gold-light", "Gold", AppTheme.Light, "gold"),
+        new AppearancePreset("mint-light", "Mint", AppTheme.Light, "mint"),
+        new AppearancePreset("terracotta-light", "Terracotta", AppTheme.Light, "terracotta"),
+        new AppearancePreset("crimson-dark", "Crimson", AppTheme.Dark, "crimson"),
+        new AppearancePreset("wine-dark", "Wine", AppTheme.Dark, "wine"),
+        new AppearancePreset("steel-dark", "Steel", AppTheme.Dark, "steel"),
+        new AppearancePreset("blue-light", "Blue", AppTheme.Light, "blue"),
+        new AppearancePreset("indigo-light", "Indigo", AppTheme.Light, "indigo"),
+        new AppearancePreset("violet-dark", "Violet", AppTheme.Dark, "violet"),
+        new AppearancePreset("pink-light", "Pink", AppTheme.Light, "pink"),
+        new AppearancePreset("amber-light", "Amber", AppTheme.Light, "amber"),
+        new AppearancePreset("lime-light", "Lime", AppTheme.Light, "lime"),
+        new AppearancePreset("denim-dark", "Denim", AppTheme.Dark, "denim"),
+        new AppearancePreset("magenta-dark", "Magenta", AppTheme.Dark, "magenta"),
+        new AppearancePreset("mint-dark", "Mint Dark", AppTheme.Dark, "mint"),
+        new AppearancePreset("steel-light", "Steel Light", AppTheme.Light, "steel"),
+        new AppearancePreset("ocean-light", "Ocean Light", AppTheme.Light, "ocean"),
     };
 
     /// <summary>
@@ -271,6 +298,24 @@ public static class ThemeManager
     public static Color AccentEdge(Accent accent, AppTheme theme) =>
         WithAlpha(accent.Primary, theme == AppTheme.Dark ? (byte)0x5C : (byte)0x3A);
 
+    /// <summary>The six surface/text colours used by preset preview tiles.</summary>
+    public static ThemePalette GetPalette(AppTheme theme) =>
+        theme == AppTheme.Dark
+            ? new ThemePalette(
+                H(0x111823),
+                H(0x17202E),
+                H(0x212C3D),
+                H(0x2F3D53),
+                H(0xEAF0F8),
+                H(0x8A99B0))
+            : new ThemePalette(
+                H(0xFFFFFF),
+                H(0xF6F8FC),
+                H(0xE2E8F2),
+                H(0xCBD6E4),
+                H(0x0D1520),
+                H(0x5E6E85));
+
     /// <summary>Applies the palette for the given theme + accent + header radiant in place.</summary>
     public static void Apply(
         AppTheme theme,
@@ -281,6 +326,7 @@ public static class ThemeManager
     {
         var accent = Resolve(accentKey, accentHex);
         var dark = theme == AppTheme.Dark;
+        var palette = GetPalette(theme);
         Current = theme;
 
         Set("Brush.Background", dark ? H(0x0A0E15) : H(0xF2F5FA));
@@ -288,15 +334,15 @@ public static class ThemeManager
         // the embedded session matches the loader instead of flashing another
         // shade while the WebView initializes.
         Set("Brush.ChatBackground", dark ? H(0x0B1216) : H(0xEEF1F4));
-        Set("Brush.Surface", dark ? H(0x111823) : H(0xFFFFFF));
-        Set("Brush.SurfaceAlt", dark ? H(0x17202E) : H(0xF6F8FC));
-        Set("Brush.Border", dark ? H(0x212C3D) : H(0xE2E8F2));
-        Set("Brush.BorderStrong", dark ? H(0x2F3D53) : H(0xCBD6E4));
+        Set("Brush.Surface", palette.Surface);
+        Set("Brush.SurfaceAlt", palette.SurfaceAlt);
+        Set("Brush.Border", palette.Border);
+        Set("Brush.BorderStrong", palette.BorderStrong);
 
         Set("Brush.ScrollThumb", dark ? H(0x2A3648) : H(0xC9D3E2));
         Set("Brush.ScrollThumbHover", dark ? H(0x3C4C63) : H(0x9AA9BD));
-        Set("Brush.Text", dark ? H(0xEAF0F8) : H(0x0D1520));
-        Set("Brush.Muted", dark ? H(0x8A99B0) : H(0x5E6E85));
+        Set("Brush.Text", palette.Text);
+        Set("Brush.Muted", palette.Muted);
 
         Set("Brush.Primary", accent.Primary);
         Set("Brush.PrimaryHover", accent.Hover);
@@ -331,6 +377,32 @@ public static class ThemeManager
         SetGradient("Brush.HeroGradient", headerStops);
 
         Changed?.Invoke();
+    }
+
+    /// <summary>
+    /// Re-tints the accent-derived resources for an in-memory preview (the colour
+    /// picker being dragged) without swapping the whole palette. Theme surfaces
+    /// stay as they are, so a preview never flashes a half-applied theme; the
+    /// accent chips, selection wash and header gradient still update live.
+    /// </summary>
+    public static void PreviewAccent(
+        string? accentKey,
+        string? headerKey = null,
+        string? inkKey = null,
+        string? accentHex = null)
+    {
+        var accent = Resolve(accentKey, accentHex);
+
+        Set("Brush.Primary", accent.Primary);
+        Set("Brush.PrimaryHover", accent.Hover);
+        Set("Brush.PrimaryPressed", accent.Pressed);
+        Set("Brush.OnPrimary", ResolveOnPrimary(accent, inkKey));
+        Set("Brush.Selection", Selection(accent, Current));
+        Set("Brush.PrimarySoft", PrimarySoft(accent, Current));
+        Set("Brush.AccentEdge", AccentEdge(accent, Current));
+        SetGradient("Brush.HeroGradient", ResolveHeaderStops(accent, headerKey));
+
+        PreviewChanged?.Invoke();
     }
 
     /// <summary>Swaps the app font: bundled Cairo for Arabic, Rubik for English.</summary>

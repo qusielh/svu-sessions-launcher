@@ -7,7 +7,7 @@
     const bridge = window.chrome && window.chrome.webview;
 
     if ("scrollRestoration" in history) {
-        history.scrollRestoration = "none";
+        history.scrollRestoration = "manual";
     }
 
     const ITEM = 74;
@@ -35,6 +35,9 @@
     let activeSelectIndex = -1;
     let activeSelectOptions = [];
     let selectQuery = "";
+    let selectCloseTimer = 0;
+    let drawerCloseTimer = 0;
+    let drawerClosing = null;
     let rendered = false;
     const selectLists = new WeakMap();
 
@@ -50,6 +53,8 @@
         "main.emptySessions": "No sessions to show right now.",
         "main.loadingSessions": "Loading sessions\u2026",
         "main.noMatches": "No sessions match your filters.",
+        "main.loadError": "Couldn't load sessions. Try again in a moment.",
+        "common.retry": "Retry",
         "main.launch": "Launch session",
         "col.start": "Starts",
         "col.course": "Course",
@@ -59,7 +64,9 @@
         "col.server": "Server",
         "diag.button": "Diagnostics",
         "select.search": "Type to find\u2026",
-        "select.empty": "No matches."
+        "select.empty": "No matches.",
+        "download.modeQueue": "One by one",
+        "download.modeParallel": "All at once"
     };
 
     function t(key) {
@@ -304,8 +311,14 @@
 
         const loading = state.body && state.body.loading;
         const refresh = $("#refreshBtn");
+        const wasLoading = refresh.classList.contains("is-loading");
         refresh.disabled = !!loading;
         refresh.classList.toggle("is-loading", !!loading);
+        const spin = $("#refreshSpin");
+        if (spin) {
+            if (loading && !wasLoading) spin.beginElement();
+            else if (!loading && wasLoading) spin.endElement();
+        }
         $("#loadbar").hidden = !loading;
     }
 
@@ -492,6 +505,18 @@
         menu.style.top = Math.round(top) + "px";
     }
 
+    function cancelSelectClose() {
+        if (selectCloseTimer) {
+            clearTimeout(selectCloseTimer);
+            selectCloseTimer = 0;
+        }
+
+        const menu = $("#selectMenu");
+        if (menu) {
+            menu.classList.remove("is-closing");
+        }
+    }
+
     function openSelectMenu(control, seed) {
         if (!control) {
             return;
@@ -509,6 +534,7 @@
         }
 
         closeSelectMenu(false);
+        cancelSelectClose();
         activeSelect = control;
         selectQuery = seed || "";
         control.classList.add("is-open");
@@ -549,8 +575,14 @@
         selectQuery = "";
         const menu = $("#selectMenu");
         if (menu) {
-            menu.hidden = true;
-            menu.innerHTML = "";
+            cancelSelectClose();
+            menu.classList.add("is-closing");
+            selectCloseTimer = setTimeout(function () {
+                menu.hidden = true;
+                menu.classList.remove("is-closing");
+                menu.innerHTML = "";
+                selectCloseTimer = 0;
+            }, 130);
         }
     }
 
@@ -829,7 +861,8 @@
             return '<span class="spinner"></span><p>' + esc(message) + "</p>";
         }
 
-        return '<div class="state-icon">' + icon("i-ticket") + "</div><p>" + esc(message) + "</p>";
+        const glyph = kind === "error" ? "i-alert" : "i-calendar";
+        return '<div class="state-icon">' + icon(glyph) + "</div><p>" + esc(message) + "</p>";
     }
 
     function updateList() {
@@ -862,9 +895,18 @@
         if (sessions.length === 0) {
             virtual.hidden = true;
             spinner.hidden = false;
-            spinner.innerHTML = body.loading
-                ? listState("loading", t("main.loadingSessions"))
-                : listState("empty", body.noMatches ? t("main.noMatches") : t("main.emptySessions"));
+            spinner.classList.toggle("is-error", !!body.error && !body.loading);
+            if (body.loading) {
+                spinner.innerHTML = listState("loading", t("main.loadingSessions"));
+            } else if (body.error) {
+                spinner.innerHTML = listState("error", t("main.loadError")) +
+                    '<button class="btn secondary sm" data-action="refresh">' +
+                    esc(t("common.retry")) + "</button>";
+            } else {
+                spinner.innerHTML = listState(
+                    "empty",
+                    body.noMatches ? t("main.noMatches") : t("main.emptySessions"));
+            }
             renderedSignature = "";
             return;
         }
@@ -902,8 +944,19 @@
         const list = presets || [];
         const shown = presetsExpanded ? list : list.slice(0, 9);
         $("#presetGrid").innerHTML = shown.map(function (preset) {
+            // Each tile previews its own theme and accent, so a light preset
+            // never sits on a dark card (or vice versa) with a different hue.
+            const vars = [
+                "--preset-accent:" + preset.accent,
+                "--preset-bg:" + preset.surfaceAlt,
+                "--preset-text:" + preset.text,
+                "--preset-muted:" + preset.muted,
+                "--preset-border:" + preset.border,
+                "--preset-border-strong:" + preset.borderStrong
+            ].join(";");
             return '<button class="preset' + (preset.key === activeKey ? " is-active" : "") +
-                '" data-preset="' + esc(preset.key) + '">' +
+                '" data-preset="' + esc(preset.key) + '" data-theme="' + (preset.dark ? "dark" : "light") +
+                '" style="' + esc(vars) + '">' +
                 '<span class="preset-swatch" style="background:' + esc(preset.swatch) + '"></span>' +
                 '<span class="preset-name">' + esc(preset.label) + "</span>" +
                 '<span class="preset-theme">' + esc(preset.themeLabel) + "</span>" +
@@ -978,19 +1031,69 @@
             '<span class="dl-class">' + esc(row["class"]) + "</span>" +
             '<span class="dl-term">' + esc(row.term) + "</span>" +
             '<span class="dl-date">' + esc(row.date) + "</span>" +
-            '<span class="dl-status"><span class="dl-spin"></span><span class="dl-mark"></span></span>' +
+            '<span class="dl-status"><span class="dl-spin"></span><span class="dl-mark"></span><span class="dl-label"></span></span>' +
             '<div class="dl-progress"><span></span></div>' +
             "</div>";
     }
 
+    function downloadGroupRows(list) {
+        const groups = [];
+        const lookup = new Map();
+
+        list.forEach(function (row) {
+            const course = String(row.course || "").trim();
+            const klass = String(row["class"] || "").trim();
+            const key = course + "\u001f" + klass;
+            let group = lookup.get(key);
+
+            if (!group) {
+                group = { course: course, klass: klass, rows: [] };
+                lookup.set(key, group);
+                groups.push(group);
+            }
+
+            group.rows.push(row);
+        });
+
+        return groups;
+    }
+
+    function downloadGroupTitle(group, showCourse) {
+        if (showCourse && group.course && group.klass) {
+            return group.course + " \u00b7 " + group.klass;
+        }
+
+        return group.klass || group.course || t("download.title");
+    }
+
+    function downloadGroupHtml(group, title) {
+        return '<div class="dl-group"><span class="dl-group-title">' + esc(title) +
+            '</span><span class="dl-group-count">' + group.rows.length + "</span></div>";
+    }
+
     function updateDownloadRows(list) {
-        const signature = list.map(function (row) {
-            return row.index + ":" + row.order + ":" + row.course + ":" + row.date;
-        }).join("|");
+        const groups = downloadGroupRows(list);
+        const grouped = groups.length > 1;
+        const showCourse = new Set(groups.map(function (group) {
+            return group.course;
+        })).size > 1;
+        const signature = (grouped ? "g:" : "f:") +
+            (state && state.language ? state.language.code : "") + "|" +
+            list.map(function (row) {
+                return row.index + ":" + row.order + ":" + row.course + ":" + row["class"] + ":" + row.date;
+            }).join("|");
 
         if (signature !== downloadListSignature) {
             downloadListSignature = signature;
-            $("#downloadList").innerHTML = list.map(downloadRowHtml).join("");
+
+            if (grouped) {
+                $("#downloadList").innerHTML = groups.map(function (group) {
+                    return downloadGroupHtml(group, downloadGroupTitle(group, showCourse)) +
+                        group.rows.map(downloadRowHtml).join("");
+                }).join("");
+            } else {
+                $("#downloadList").innerHTML = list.map(downloadRowHtml).join("");
+            }
         }
 
         const marks = { done: "\u2713", failed: "\u2715", cancelled: "\u2013" };
@@ -1015,6 +1118,16 @@
                 mark.textContent = marks[row.status] || "";
             }
 
+            // The status column carries the state in words, not just a glyph:
+            // a retry shows its live note ("Reconnecting…") and every finished
+            // row keeps its Done/Failed/Cancelled label visible.
+            const label = $(".dl-label", element);
+            if (label) {
+                label.textContent = row.status === "downloading" && row.note
+                    ? row.note
+                    : (row.statusText || "");
+            }
+
             const progress = $(".dl-progress span", element);
             if (progress) {
                 const value = Math.max(0, Math.min(1, Number(row.progress) || 0));
@@ -1036,7 +1149,11 @@
         element.classList.toggle("is-error", kind === "error");
         element.innerHTML = kind === "loading"
             ? '<span class="spinner"></span><span>' + esc(message) + "</span>"
-            : esc(message);
+            : '<span>' + esc(message) + "</span>" +
+              (kind === "error"
+                  ? '<button class="btn secondary sm" data-action="download-retry">' +
+                    esc(t("common.retry")) + "</button>"
+                  : "");
     }
 
     function updateDownloads() {
@@ -1141,12 +1258,34 @@
         Object.keys(panels).forEach(function (action) {
             const button = $('.rail-btn[data-action="' + action + '"]');
             if (button) {
-                button.classList.toggle("is-on", !panels[action].hidden);
+                const panel = panels[action];
+                button.classList.toggle("is-on", !panel.hidden && !panel.classList.contains("is-closing"));
             }
         });
     }
 
+    function cancelDrawerClose() {
+        if (!drawerClosing) {
+            return;
+        }
+
+        const panel = drawerClosing;
+        drawerClosing = null;
+        if (drawerCloseTimer) {
+            clearTimeout(drawerCloseTimer);
+            drawerCloseTimer = 0;
+        }
+
+        panel.hidden = true;
+        panel.classList.remove("is-closing");
+        const backdrop = $("#drawerBackdrop");
+        if (backdrop) {
+            backdrop.classList.remove("is-closing");
+        }
+    }
+
     function openDrawer(panel) {
+        cancelDrawerClose();
         if (downloadsOpen && panel.id !== "downloadsDrawer") {
             downloadsOpen = false;
             send("downloadsClose");
@@ -1165,21 +1304,57 @@
     }
 
     function closeDrawer(panel) {
-        if (!panel) {
+        if (!panel || panel.hidden || panel === drawerClosing) {
             return;
         }
 
-        panel.hidden = true;
         panel.querySelectorAll("select").forEach(function (select) {
             select.blur();
         });
 
-        if (!$(".drawer:not([hidden])")) {
-            $("#drawerBackdrop").hidden = true;
-            document.body.classList.remove("has-drawer");
+        panel.classList.add("is-closing");
+        drawerClosing = panel;
+        syncRailState();
+
+        const backdrop = $("#drawerBackdrop");
+        const hasOpenDrawer = !!$(".drawer:not([hidden]):not(.is-closing)");
+        if (backdrop && !hasOpenDrawer) {
+            backdrop.classList.add("is-closing");
         }
 
-        syncRailState();
+        const finish = function () {
+            if (drawerClosing !== panel) {
+                return;
+            }
+
+            if (drawerCloseTimer) {
+                clearTimeout(drawerCloseTimer);
+                drawerCloseTimer = 0;
+            }
+
+            panel.hidden = true;
+            panel.classList.remove("is-closing");
+            drawerClosing = null;
+
+            if (backdrop && !hasOpenDrawer) {
+                backdrop.hidden = true;
+                backdrop.classList.remove("is-closing");
+                document.body.classList.remove("has-drawer");
+            }
+
+            syncRailState();
+        };
+
+        panel.addEventListener("animationend", function onAnimationEnd(event) {
+            if (event.target !== panel) {
+                return;
+            }
+
+            panel.removeEventListener("animationend", onAnimationEnd);
+            finish();
+        });
+
+        drawerCloseTimer = setTimeout(finish, 180);
     }
 
     function closeDownloadsDrawer() {
@@ -1232,21 +1407,21 @@
                 send("exit");
                 break;
             case "about":
-                if ($("#aboutDrawer").hidden) {
+                if ($("#aboutDrawer").hidden || $("#aboutDrawer").classList.contains("is-closing")) {
                     openAbout();
                 } else {
                     closeDrawer($("#aboutDrawer"));
                 }
                 break;
             case "downloads":
-                if ($("#downloadsDrawer").hidden) {
+                if ($("#downloadsDrawer").hidden || $("#downloadsDrawer").classList.contains("is-closing")) {
                     openDownloads();
                 } else {
                     closeDownloadsDrawer();
                 }
                 break;
             case "appearance":
-                if ($("#appearanceDrawer").hidden) {
+                if ($("#appearanceDrawer").hidden || $("#appearanceDrawer").classList.contains("is-closing")) {
                     openAppearance();
                 } else {
                     closeDrawer($("#appearanceDrawer"));
@@ -1266,6 +1441,9 @@
                 break;
             case "download-cancel":
                 send("downloadCancel");
+                break;
+            case "download-retry":
+                send("download-retry");
                 break;
             case "diagnostics":
                 send("diagnostics");
@@ -1636,6 +1814,10 @@
     document.addEventListener("change", function (event) {
         const check = event.target.closest("[data-dl-check]");
         if (check) {
+            const label = check.closest(".dl-check");
+            if (label) {
+                label.classList.add("is-interactive");
+            }
             send("downloadSelect", {
                 index: Number(check.dataset.dlCheck),
                 value: check.checked

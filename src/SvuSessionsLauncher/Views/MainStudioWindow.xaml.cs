@@ -43,6 +43,7 @@ public partial class MainStudioWindow : Window
         nameof(MainViewModel.SortDescending),
         nameof(MainViewModel.SessionCount),
         nameof(MainViewModel.ShowSessionsEmpty),
+        nameof(MainViewModel.HasSessionLoadError),
         nameof(MainViewModel.ShowNoMatches)
     };
 
@@ -250,7 +251,7 @@ public partial class MainStudioWindow : Window
 
         var page = new Uri(Path.Combine(
             AppContext.BaseDirectory, "Assets", "studio", "index.html")).AbsoluteUri;
-        core.Navigate(page + "?v=20261106l");
+        core.Navigate(page + "?v=20261117c");
 
         await vm.InitializeAsync();
         SchedulePush();
@@ -702,6 +703,7 @@ public partial class MainStudioWindow : Window
             {
                 loading = vm.IsLoadingSessions,
                 empty = vm.ShowSessionsEmpty,
+                error = vm.HasSessionLoadError,
                 noMatches = vm.ShowNoMatches,
                 busy = vm.IsBusy,
                 active = vm.IsSessionActive,
@@ -740,13 +742,25 @@ public partial class MainStudioWindow : Window
             accentHex = ThemeManager.Hex(accent.Primary),
             ink = vm.InkStyle,
             preset = vm.SelectedPresetOption?.Key,
-            presets = vm.PresetOptions.Select(p => new
+            presets = vm.PresetOptions.Select(p =>
             {
-                key = p.Key,
-                label = p.Label,
-                themeLabel = p.ThemeLabel,
-                dark = p.Preset.Theme == Theming.AppTheme.Dark,
-                swatch = BrushCss(p.Swatch)
+                var palette = ThemeManager.GetPalette(p.Preset.Theme);
+                var accent = ThemeManager.Resolve(p.Preset.Accent);
+
+                return new
+                {
+                    key = p.Key,
+                    label = p.Label,
+                    themeLabel = p.ThemeLabel,
+                    dark = p.Preset.Theme == Theming.AppTheme.Dark,
+                    swatch = BrushCss(p.Swatch),
+                    accent = ThemeManager.Hex(accent.Primary),
+                    surfaceAlt = CssColor(palette.SurfaceAlt),
+                    text = CssColor(palette.Text),
+                    muted = CssColor(palette.Muted),
+                    border = CssColor(palette.Border),
+                    borderStrong = CssColor(palette.BorderStrong)
+                };
             }).ToList()
         };
     }
@@ -835,7 +849,7 @@ public partial class MainStudioWindow : Window
             "main.options", "main.refresh", "main.refreshing", "main.launch", "main.launching",
             "main.filterTutor", "main.filterClass", "select.search", "select.empty",
             "main.emptySessions", "main.loadingSessions",
-            "main.noMatches", "main.selectSession", "main.about", "main.logout", "main.exit",
+            "main.noMatches", "main.loadError", "common.retry", "main.selectSession", "main.about", "main.logout", "main.exit",
             "main.appearance", "main.clockFormat", "main.term", "main.sessionCount",
             "main.style", "main.presets", "main.theme", "main.themeLight", "main.themeDark",
             "main.globalColor", "main.colorHint", "main.labelInk",
@@ -847,7 +861,12 @@ public partial class MainStudioWindow : Window
             "download.select", "download.term", "download.program", "download.course",
             "download.tutor", "download.class", "download.colTerm", "download.colDate",
             "download.loading", "download.empty", "download.hint", "download.selectAll",
-            "download.clear", "download.download", "download.cancel"
+            "download.clear", "download.download", "download.cancel", "download.cancelling",
+            "download.modeQueue", "download.modeParallel",
+            "download.status.queued", "download.status.downloading", "download.status.done",
+            "download.status.failed", "download.status.cancelled",
+            "download.retrying", "download.error", "download.error.noLink", "download.error.file",
+            "download.done", "download.doneSome", "download.allClasses", "download.fanoutClass"
         };
 
         var strings = new Dictionary<string, string>(keys.Length, StringComparer.Ordinal);
@@ -879,7 +898,7 @@ public partial class MainStudioWindow : Window
                 DisplayOptions.Use24HourClock ? "ddd dd MMM, HH:mm" : "ddd dd MMM, hh:mm tt",
                 Loc.Instance.Culture);
 
-    private void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
+    private async void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
     {
         if (DataContext is not MainViewModel vm)
         {
@@ -1013,6 +1032,13 @@ public partial class MainStudioWindow : Window
                     break;
                 case "downloadClass":
                     SetDownloadSelection("class", Text(root, "value"));
+                    break;
+                case "download-retry":
+                    if (_downloadsVm is { } retryDownloads)
+                    {
+                        await retryDownloads.RetryAsync();
+                    }
+
                     break;
                 case "downloadSelect":
                     if (_downloadsVm is { } selectedDownloads

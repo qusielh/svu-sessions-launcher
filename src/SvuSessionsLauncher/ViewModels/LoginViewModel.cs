@@ -238,28 +238,19 @@ public sealed class LoginViewModel : ObservableObject
         }
         catch (WebDemoServiceException ex)
         {
-            // The message is a localisation key, an HTTP status or a raw server
-            // fault; the Loc indexer passes unknown keys through so unexpected
-            // replies remain visible while testing against the live service.
+            // Known keys (network, invalid credentials) are safe to show as-is.
+            // Anything else is a transport/HTTP/SOAP fault: keep the UI copy
+            // friendly and leave the raw reply in the log for bug reports.
             Log.Write($"WebDemo service error during sign-in: {ex}");
-            ErrorMessage = ex.InnerException is null
+            ErrorMessage = ex.Message is "login.error.network" or "login.error.invalid" or "login.error.tutorBlocked"
                 ? Loc.Instance[ex.Message]
-                : Loc.Instance.Format(
-                    "login.error.networkDetail",
-                    ex.Message,
-                    ex.GetBaseException().Message);
+                : Loc.Instance["service.error"];
             SignInFailed?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
-            // Surface the underlying cause while testing; it is logged too so
-            // failures can be diagnosed even when the message is trimmed.
             Log.Write($"Sign-in transport failure: {ex}");
-            var detail = ex.GetBaseException().Message;
-            ErrorMessage = Loc.Instance.Format(
-                "login.error.networkDetail",
-                Loc.Instance["login.error.network"],
-                detail);
+            ErrorMessage = Loc.Instance["login.error.network"];
             SignInFailed?.Invoke(this, EventArgs.Empty);
         }
         finally

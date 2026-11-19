@@ -349,7 +349,7 @@ public partial class LoginWindow : Window
         var ink = ThemeManager.ResolveOnPrimary(accent, settings?.Ink);
         return $"?theme={theme}&accent={Hex(accent.Primary)}&accentHover={Hex(accent.Hover)}" +
                $"&accentStrong={Hex(accent.Pressed)}&ink={Hex(ink)}&hd0={Hex(stops[0])}&hd1={Hex(stops[1])}" +
-               $"&hd2={Hex(stops[2])}&v=20261106l";
+               $"&hd2={Hex(stops[2])}&v=20261117c";
     }
 
     private const int WmNcLButtonDown = 0xA1;

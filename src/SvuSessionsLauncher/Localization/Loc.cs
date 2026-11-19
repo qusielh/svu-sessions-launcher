@@ -29,7 +29,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["login.password"] = "Password",
             ["login.autoSignIn"] = "Sign me in automatically next time",
             ["login.privacy"] = "Your sign-in stays on this device only.",
-            ["login.copyright"] = "\u00a9 2026 Syrian Virtual University. All rights reserved.",
+            ["login.copyright"] = "\u00a9 2026 SVU Sessions Launcher contributors. MIT licensed.",
             ["login.username.placeholder"] = "e.g. name_123456",
             ["login.password.placeholder"] = "Your password",
             ["login.savePassword"] = "Remember my password",
@@ -40,7 +40,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["login.error.invalid"] = "The username or password is incorrect.",
             ["login.error.tutorBlocked"] = "Tutor accounts are not supported in this student-only version yet.",
             ["login.error.network"] = "Could not reach the university service. Check your connection.",
-            ["login.error.networkDetail"] = "{0}\n\nTechnical: {1}",
+            ["service.error"] = "The university service returned an error. Try again in a moment.",
 
             ["main.title"] = "Sessions",
             ["main.welcome"] = "Signed in as {0}",
@@ -65,7 +65,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["main.selectProgram"] = "Select a programme",
             ["main.allPrograms"] = "All programmes",
             ["main.allCourses"] = "All courses",
-            ["main.serviceError"] = "The university service returned an error: {0}",
+            ["main.loadError"] = "Couldn't load sessions. Try again in a moment.",
             ["opt.mySessions"] = "My sessions (default)",
             ["main.selectCourse"] = "Select a course",
             ["main.selectSession"] = "Select a session from the list to launch it.",
@@ -75,6 +75,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["main.sessionCount"] = "{0} session(s)",
             ["main.endedJoinable"] = "This session has already ended \u2014 you can still join it.",
             ["main.cancelledJoinable"] = "This session was cancelled \u2014 you can still join it.",
+            ["session.endedNetwork"] = "The session ended because the connection could not be recovered.",
             ["main.clockFormat"] = "12/24-hour clock",
             ["mic.muted"] = "Microphone: muted",
             ["mic.on"] = "Microphone: still on",
@@ -118,13 +119,17 @@ public sealed class Loc : INotifyPropertyChanged
             ["status.unknown"] = "Unknown",
 
             ["about.title"] = "About",
-            ["about.body"] = "A new student-only version of the SVU sessions launcher, made by Qusie. " +
-                              "It is not connected to the tutor features. Join the Discord community and support the project by starring it on GitHub.",
-            ["about.support"] = "Star the project on GitHub",
+            ["about.body"] = "A student-only desktop launcher for Syrian Virtual University online sessions. " +
+                              "It brings session browsing, live rooms, chat, screen sharing, and recording downloads into one app. " +
+                              "This is a beta release, so bugs and rough edges are expected. " +
+                              "Please leave feedback or report issues on GitHub, and star the project if it helps you. " +
+                              "Unofficial project, not affiliated with SVU.",
+            ["about.support"] = "Leave feedback on GitHub",
             ["about.close"] = "Close",
 
             ["common.ok"] = "OK",
             ["common.cancel"] = "Cancel",
+            ["common.retry"] = "Retry",
             ["common.language"] = "Language",
 
             ["diag.button"] = "Diagnostics",
@@ -159,7 +164,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["download.status.failed"] = "Failed",
             ["download.status.cancelled"] = "Cancelled",
             ["download.retrying"] = "Reconnecting\u2026",
-            ["download.error"] = "Couldn't reach the server: {0}",
+            ["download.error"] = "Couldn't reach the server. Check your connection and try again.",
             ["download.error.noLink"] = "No recording link was returned for this session.",
             ["download.error.file"] = "The recording download failed.",
             ["download.modeQueue"] = "One by one",
@@ -182,7 +187,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["login.password"] = "\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631",
             ["login.autoSignIn"] = "\u0633\u062c\u0651\u0644 \u062f\u062e\u0648\u0644\u064a \u062a\u0644\u0642\u0627\u0626\u064a\u064b\u0627 \u0641\u064a \u0627\u0644\u0645\u0631\u0629 \u0627\u0644\u0642\u0627\u062f\u0645\u0629",
             ["login.privacy"] = "\u064a\u0628\u0642\u0649 \u062a\u0633\u062c\u064a\u0644 \u062f\u062e\u0648\u0644\u0643 \u0639\u0644\u0649 \u0647\u0630\u0627 \u0627\u0644\u062c\u0647\u0627\u0632",
-            ["login.copyright"] = "\u00a9 2026 \u0627\u0644\u062c\u0627\u0645\u0639\u0629 \u0627\u0644\u0627\u0641\u062a\u0631\u0627\u0636\u064a\u0629 \u0627\u0644\u0633\u0648\u0631\u064a\u0629. \u062c\u0645\u064a\u0639 \u0627\u0644\u062d\u0642\u0648\u0642 \u0645\u062d\u0641\u0648\u0638\u0629.",
+            ["login.copyright"] = "\u00a9 2026 \u0645\u0633\u0627\u0647\u0645\u0648 \u0645\u0634\u063a\u0651\u0644 \u062c\u0644\u0633\u0627\u062a \u0627\u0644\u062c\u0627\u0645\u0639\u0629 \u0627\u0644\u0627\u0641\u062a\u0631\u0627\u0636\u064a\u0629. \u0645\u0631\u062e\u0651\u0635 \u0628\u0645\u0648\u062c\u0628 MIT.",
             ["login.username.placeholder"] = "\u0645\u062b\u0627\u0644: name_123456",
             ["login.password.placeholder"] = "\u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631",
             ["login.savePassword"] = "\u062a\u0630\u0643\u0651\u0631 \u0643\u0644\u0645\u0629 \u0627\u0644\u0645\u0631\u0648\u0631",
@@ -193,7 +198,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["login.error.invalid"] = "اسم المستخدم أو كلمة المرور غير صحيحة.",
             ["login.error.tutorBlocked"] = "\u062d\u0633\u0627\u0628\u0627\u062a \u0627\u0644\u0645\u062f\u0631\u0651\u0633\u064a\u0646 \u063a\u064a\u0631 \u0645\u062f\u0639\u0648\u0645\u0629 \u0641\u064a \u0647\u0630\u0647 \u0627\u0644\u0646\u0633\u062e\u0629 \u0627\u0644\u0645\u062e\u0635\u0651\u0635\u0629 \u0644\u0644\u0637\u0644\u0627\u0628 \u0628\u0639\u062f.",
             ["login.error.network"] = "\u062a\u0639\u0630\u0651\u0631 \u0627\u0644\u0648\u0635\u0648\u0644 \u0625\u0644\u0649 \u062e\u062f\u0645\u0629 \u0627\u0644\u062c\u0627\u0645\u0639\u0629. \u062a\u062d\u0642\u0651\u0642 \u0645\u0646 \u0627\u062a\u0635\u0627\u0644\u0643.",
-            ["login.error.networkDetail"] = "{0}\n\n\u0627\u0644\u062a\u0641\u0627\u0635\u064a\u0644: {1}",
+            ["service.error"] = "\u0623\u0639\u0627\u062f\u062a \u062e\u062f\u0645\u0629 \u0627\u0644\u062c\u0627\u0645\u0639\u0629 \u062e\u0637\u0623\u064b. \u062d\u0627\u0648\u0644 \u0645\u062c\u062f\u062f\u064b\u0627 \u0628\u0639\u062f \u0642\u0644\u064a\u0644.",
 
             ["main.title"] = "\u0627\u0644\u062c\u0644\u0633\u0627\u062a",
             ["main.welcome"] = "\u0645\u0631\u062d\u0628\u064b\u0627 {0}",
@@ -218,7 +223,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["main.selectProgram"] = "\u0627\u062e\u062a\u0631 \u0628\u0631\u0646\u0627\u0645\u062c\u064b\u0627",
             ["main.allPrograms"] = "\u0643\u0644 \u0627\u0644\u0628\u0631\u0627\u0645\u062c",
             ["main.allCourses"] = "\u0643\u0644 \u0627\u0644\u0645\u0642\u0631\u0631\u0627\u062a",
-            ["main.serviceError"] = "\u0623\u0639\u0627\u062f\u062a \u062e\u062f\u0645\u0629 \u0627\u0644\u062c\u0627\u0645\u0639\u0629 \u062e\u0637\u0623\u064b: {0}",
+            ["main.loadError"] = "\u062a\u0639\u0630\u0651\u0631 \u062a\u062d\u0645\u064a\u0644 \u0627\u0644\u062c\u0644\u0633\u0627\u062a. \u062d\u0627\u0648\u0644 \u0645\u062c\u062f\u062f\u064b\u0627 \u0628\u0639\u062f \u0642\u0644\u064a\u0644.",
             ["opt.mySessions"] = "\u062c\u0644\u0633\u0627\u062a\u064a (\u0627\u0644\u0627\u0641\u062a\u0631\u0627\u0636\u064a)",
             ["main.selectCourse"] = "\u0627\u062e\u062a\u0631 \u0645\u0642\u0631\u0631\u064b\u0627",
             ["main.selectSession"] = "\u0627\u062e\u062a\u0631 \u062c\u0644\u0633\u0629 \u0645\u0646 \u0627\u0644\u0642\u0627\u0626\u0645\u0629 \u0644\u0628\u062f\u0626\u0647\u0627.",
@@ -228,6 +233,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["main.sessionCount"] = "{0} \u062c\u0644\u0633\u0629",
             ["main.endedJoinable"] = "\u0627\u0646\u062a\u0647\u062a \u0647\u0630\u0647 \u0627\u0644\u062c\u0644\u0633\u0629 \u2014 \u0644\u0627 \u064a\u0632\u0627\u0644 \u0628\u0625\u0645\u0643\u0627\u0646\u0643 \u0627\u0644\u0627\u0646\u0636\u0645\u0627\u0645 \u0625\u0644\u064a\u0647\u0627.",
             ["main.cancelledJoinable"] = "\u0623\u064f\u0644\u063a\u064a\u062a \u0647\u0630\u0647 \u0627\u0644\u062c\u0644\u0633\u0629 \u2014 \u0644\u0627 \u064a\u0632\u0627\u0644 \u0628\u0625\u0645\u0643\u0627\u0646\u0643 \u0627\u0644\u0627\u0646\u0636\u0645\u0627\u0645 \u0625\u0644\u064a\u0647\u0627.",
+            ["session.endedNetwork"] = "\u0627\u0646\u062a\u0647\u062a \u0627\u0644\u062c\u0644\u0633\u0629 \u0644\u0623\u0646 \u0627\u0644\u0627\u062a\u0635\u0627\u0644 \u062a\u0639\u0630\u0651\u0631 \u0627\u0633\u062a\u0639\u0627\u062f\u062a\u0647.",
             ["main.clockFormat"] = "\u0635\u064a\u063a\u0629 \u0627\u0644\u0633\u0627\u0639\u0629 (12/24)",
             ["mic.muted"] = "الميكروفون: مكتوم",
             ["mic.on"] = "الميكروفون: ما زال مفتوحًا",
@@ -271,12 +277,13 @@ public sealed class Loc : INotifyPropertyChanged
             ["status.unknown"] = "\u063a\u064a\u0631 \u0645\u0639\u0631\u0648\u0641",
 
             ["about.title"] = "\u062d\u0648\u0644",
-            ["about.body"] = "\u0646\u0633\u062e\u0629 \u062c\u062f\u064a\u062f\u0629 \u0645\u062e\u0635\u0651\u0635\u0629 \u0644\u0644\u0637\u0644\u0627\u0628 \u0641\u0642\u0637\u060c \u0645\u0646 \u0625\u0646\u0634\u0627\u0621 Qusie. \u063a\u064a\u0631 \u0645\u0631\u062a\u0628\u0637\u0629 \u0628\u0645\u064a\u0632\u0627\u062a \u0627\u0644\u0645\u062f\u0631\u0651\u0633\u064a\u0646. \u0627\u0646\u0636\u0645 \u0625\u0644\u0649 \u0645\u062c\u062a\u0645\u0639 \u062f\u064a\u0633\u0643\u0648\u0631\u062f \u0648\u0627\u062f\u0639\u0645 \u0627\u0644\u0645\u0634\u0631\u0648\u0639 \u0628\u062a\u0642\u064a\u064a\u0645\u0647 \u0628\u0646\u062c\u0645\u0629 \u0639\u0644\u0649 GitHub.",
-            ["about.support"] = "\u0627\u0645\u0646\u062d \u0627\u0644\u0645\u0634\u0631\u0648\u0639 \u0646\u062c\u0645\u0629 \u0639\u0644\u0649 GitHub",
+            ["about.body"] = "\u0645\u0634\u063a\u0651\u0644 \u0633\u0637\u062d \u0645\u0643\u062a\u0628 \u0645\u062e\u0635\u0651\u0635 \u0644\u0644\u0637\u0644\u0627\u0628 \u0641\u0642\u0637 \u0644\u062c\u0644\u0633\u0627\u062a \u0627\u0644\u062c\u0627\u0645\u0639\u0629 \u0627\u0644\u0627\u0641\u062a\u0631\u0627\u0636\u064a\u0629 \u0627\u0644\u0633\u0648\u0631\u064a\u0629. \u064a\u062c\u0645\u0639 \u062a\u0635\u0641\u0651\u062d \u0627\u0644\u062c\u0644\u0633\u0627\u062a \u0648\u0627\u0644\u063a\u0631\u0641 \u0627\u0644\u0645\u0628\u0627\u0634\u0631\u0629 \u0648\u0627\u0644\u062f\u0631\u062f\u0634\u0629 \u0648\u0645\u0634\u0627\u0631\u0643\u0629 \u0627\u0644\u0634\u0627\u0634\u0629 \u0648\u062a\u0646\u0632\u064a\u0644 \u0627\u0644\u062a\u0633\u062c\u064a\u0644\u0627\u062a \u0641\u064a \u062a\u0637\u0628\u064a\u0642 \u0648\u0627\u062d\u062f. \u0647\u0630\u0647 \u0646\u0633\u062e\u0629 \u062a\u062c\u0631\u064a\u0628\u064a\u0629 (\u0628\u064a\u062a\u0627)\u060c \u0644\u0630\u0627 \u064a\u064f\u062a\u0648\u0642\u0651\u0639 \u0648\u062c\u0648\u062f \u0623\u062e\u0637\u0627\u0621 \u0623\u0648 \u0646\u0642\u0627\u0637 \u063a\u064a\u0631 \u0645\u0643\u062a\u0645\u0644\u0629. \u064a\u0631\u062c\u0649 \u062a\u0631\u0643 \u0627\u0644\u0645\u0644\u0627\u062d\u0638\u0627\u062a \u0623\u0648 \u0627\u0644\u0625\u0628\u0644\u0627\u063a \u0639\u0646 \u0627\u0644\u0645\u0634\u0643\u0644\u0627\u062a \u0639\u0644\u0649 GitHub\u060c \u0648\u0645\u0646\u062d \u0627\u0644\u0645\u0634\u0631\u0648\u0639 \u0646\u062c\u0645\u0629 \u0625\u0646 \u0643\u0627\u0646 \u0645\u0641\u064a\u062f\u064b\u0627 \u0644\u0643. \u0645\u0634\u0631\u0648\u0639 \u063a\u064a\u0631 \u0631\u0633\u0645\u064a \u0648\u063a\u064a\u0631 \u062a\u0627\u0628\u0639 \u0644\u0644\u062c\u0627\u0645\u0639\u0629 \u0627\u0644\u0627\u0641\u062a\u0631\u0627\u0636\u064a\u0629.",
+            ["about.support"] = "\u0627\u062a\u0631\u0643 \u0645\u0644\u0627\u062d\u0638\u0627\u062a\u0643 \u0639\u0644\u0649 GitHub",
             ["about.close"] = "\u0625\u063a\u0644\u0627\u0642",
 
             ["common.ok"] = "\u0645\u0648\u0627\u0641\u0642",
             ["common.cancel"] = "\u0625\u0644\u063a\u0627\u0621",
+            ["common.retry"] = "\u0625\u0639\u0627\u062f\u0629 \u0627\u0644\u0645\u062d\u0627\u0648\u0644\u0629",
             ["common.language"] = "\u0627\u0644\u0644\u063a\u0629",
 
             ["diag.button"] = "التشخيص",
@@ -311,7 +318,7 @@ public sealed class Loc : INotifyPropertyChanged
             ["download.status.failed"] = "\u0641\u0634\u0644",
             ["download.status.cancelled"] = "\u0645\u0644\u063a\u0649",
             ["download.retrying"] = "\u0625\u0639\u0627\u062f\u0629 \u0627\u0644\u0627\u062a\u0635\u0627\u0644\u2026",
-            ["download.error"] = "\u062a\u0639\u0630\u0651\u0631 \u0627\u0644\u0648\u0635\u0648\u0644 \u0625\u0644\u0649 \u0627\u0644\u062e\u0627\u062f\u0645: {0}",
+            ["download.error"] = "\u062a\u0639\u0630\u0651\u0631 \u0627\u0644\u0648\u0635\u0648\u0644 \u0625\u0644\u0649 \u0627\u0644\u062e\u0627\u062f\u0645. \u062a\u062d\u0642\u0651\u0642 \u0645\u0646 \u0627\u062a\u0635\u0627\u0644\u0643 \u0648\u062d\u0627\u0648\u0644 \u0645\u062c\u062f\u062f\u064b\u0627.",
             ["download.error.noLink"] = "\u0644\u0645 \u064a\u062a\u0645 \u0625\u0631\u062c\u0627\u0639 \u0631\u0627\u0628\u0637 \u0627\u0644\u062a\u0633\u062c\u064a\u0644 \u0644\u0647\u0630\u0647 \u0627\u0644\u062c\u0644\u0633\u0629.",
             ["download.error.file"] = "\u062a\u0639\u0630\u0631 \u062a\u0646\u0632\u064a\u0644 \u0627\u0644\u062a\u0633\u062c\u064a\u0644.",
             ["download.modeQueue"] = "\u0648\u0627\u062d\u062f\u064b\u0627 \u062a\u0644\u0648 \u0627\u0644\u0622\u062e\u0631",

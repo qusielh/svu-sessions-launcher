@@ -608,6 +608,45 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
         }
     }
 
+    /// <summary>
+    /// Re-runs the deepest filter step that is currently selected, so the Retry
+    /// button in the downloads drawer repeats whichever request failed instead
+    /// of forcing the user to re-pick a filter.
+    /// </summary>
+    public async Task RetryAsync()
+    {
+        if (IsDownloading || IsLoadingSessions || IsLoadingTerms || IsLoadingPrograms
+            || IsLoadingCourses || IsLoadingTutors || IsLoadingClasses)
+        {
+            return;
+        }
+
+        if (_selectedClass is { } chosen && !IsPlaceholder(chosen))
+        {
+            await OnClassChosenAsync();
+        }
+        else if (_selectedTutor is { } tutor && !IsPlaceholder(tutor))
+        {
+            await OnTutorChosenAsync();
+        }
+        else if (_selectedCourse is { } course && !IsPlaceholder(course))
+        {
+            await OnCourseChosenAsync();
+        }
+        else if (_selectedProgram is { } program && !IsPlaceholder(program))
+        {
+            await OnProgramChosenAsync();
+        }
+        else if (_selectedTerm is { } term && !IsPlaceholder(term))
+        {
+            await OnTermChosenAsync();
+        }
+        else
+        {
+            await InitializeAsync();
+        }
+    }
+
     private async Task OnClassChosenAsync()
     {
         ResetSessions();
@@ -852,12 +891,13 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
         {
             // Superseded by a newer selection, or the window closed.
         }
-        catch (Exception exception)
+        catch (Exception ex)
         {
             // A failed request is not an empty result: surface the error instead
-            // of the "no recordings" label.
+            // of the "no recordings" label. Raw transport details stay in the log.
+            Log.Write($"download request failed: {ex}");
             HasError = true;
-            ErrorMessage = Loc.Instance.Format("download.error", exception.Message);
+            ErrorMessage = Loc.Instance["download.error"];
         }
         finally
         {
@@ -970,6 +1010,7 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
         _usedNames.Clear();
         _downloadCts = new CancellationTokenSource();
         var token = _downloadCts.Token;
+        var layout = new DownloadLayout(SaveDirectory, rows);
 
         IsDownloading = true;
         int done = 0;
@@ -981,11 +1022,11 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
 
             if (DownloadInParallel)
             {
-                (done, failed) = await DownloadParallelAsync(rows, token);
+                (done, failed) = await DownloadParallelAsync(rows, layout, token);
             }
             else
             {
-                (done, failed) = await DownloadQueuedAsync(rows, token);
+                (done, failed) = await DownloadQueuedAsync(rows, layout, token);
             }
         }
         catch (OperationCanceledException)
@@ -1006,7 +1047,7 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
     }
 
     private async Task<(int Done, int Failed)> DownloadQueuedAsync(
-        List<DownloadRow> rows, CancellationToken cancellationToken)
+        List<DownloadRow> rows, DownloadLayout layout, CancellationToken cancellationToken)
     {
         int done = 0;
         int failed = 0;
@@ -1018,7 +1059,7 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
 
             try
             {
-                var request = await PrepareDownloadAsync(row, cancellationToken).ConfigureAwait(true);
+                var request = await PrepareDownloadAsync(row, layout, cancellationToken).ConfigureAwait(true);
                 if (request is null)
                 {
                     MarkFailed(row, Loc.Instance["download.error.noLink"]);
@@ -1057,7 +1098,7 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
     /// once. Each file has its own response stream and progress updates.
     /// </summary>
     private async Task<(int Done, int Failed)> DownloadParallelAsync(
-        List<DownloadRow> rows, CancellationToken cancellationToken)
+        List<DownloadRow> rows, DownloadLayout layout, CancellationToken cancellationToken)
     {
         int failed = 0;
         var requests = new List<DownloadRequest>();
@@ -1069,7 +1110,7 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
 
             try
             {
-                var request = await PrepareDownloadAsync(row, cancellationToken).ConfigureAwait(true);
+                var request = await PrepareDownloadAsync(row, layout, cancellationToken).ConfigureAwait(true);
                 if (request is null)
                 {
                     MarkFailed(row, Loc.Instance["download.error.noLink"]);
@@ -1106,7 +1147,7 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
     }
 
     private async Task<DownloadRequest?> PrepareDownloadAsync(
-        DownloadRow row, CancellationToken cancellationToken)
+        DownloadRow row, DownloadLayout layout, CancellationToken cancellationToken)
     {
         string classValue = row.Session.ClassValue;
         if (!string.IsNullOrEmpty(classValue) &&
@@ -1124,8 +1165,10 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
         }
 
         string fileName = BuildFileName(row.Session, url);
-        row.Note = fileName;
-        return new DownloadRequest(row, url, Path.Combine(SaveDirectory, fileName), fileName);
+        string destination = Path.Combine(layout.FolderFor(row), fileName);
+        string relativePath = Path.GetRelativePath(SaveDirectory, destination);
+        row.Note = relativePath;
+        return new DownloadRequest(row, url, destination, relativePath);
     }
 
     private async Task<DownloadOutcome> StartFileDownloadAsync(
@@ -1136,6 +1179,10 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
             var progress = new Progress<DownloadProgress>(report =>
             {
                 request.Row.Progress = report.Total > 0 ? (double)report.Received / report.Total : 0;
+                if (report.Attempt > 1)
+                {
+                    request.Row.Note = Loc.Instance["download.retrying"];
+                }
             });
 
             var outcome = await _client
@@ -1147,7 +1194,7 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
                 case DownloadOutcome.Completed:
                     request.Row.Status = DownloadStatus.Done;
                     request.Row.Progress = 1;
-                    request.Row.Note = request.FileName;
+                    request.Row.Note = request.RelativePath;
                     break;
                 case DownloadOutcome.Cancelled:
                     request.Row.Status = DownloadStatus.Cancelled;
@@ -1166,7 +1213,8 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            MarkFailed(request.Row, ex.Message);
+            Log.Write($"recording download failed: {ex}");
+            MarkFailed(request.Row, Loc.Instance["download.error.file"]);
             return DownloadOutcome.Failed;
         }
     }
@@ -1185,7 +1233,79 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
         Log.Write($"download failed for {row.Course} / {row.Order}: {row.Note}");
     }
 
-    private sealed record DownloadRequest(DownloadRow Row, string Url, string Destination, string FileName);
+    private sealed record DownloadRequest(
+        DownloadRow Row, string Url, string Destination, string RelativePath);
+
+    private sealed class DownloadLayout
+    {
+        private static readonly HashSet<string> ReservedFolderNames = new(StringComparer.OrdinalIgnoreCase)
+        {
+            "CON", "PRN", "AUX", "NUL",
+            "COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+            "LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+        };
+
+        private readonly string _root;
+        private readonly bool _multiple;
+        private readonly bool _splitByClass;
+
+        public DownloadLayout(string root, IReadOnlyList<DownloadRow> rows)
+        {
+            _root = root;
+            _multiple = rows.Count > 1;
+            _splitByClass = rows
+                .Select(row => ClassKey(row.Session))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count() > 1;
+        }
+
+        public string FolderFor(DownloadRow row)
+        {
+            if (!_multiple)
+            {
+                return _root;
+            }
+
+            string course = FolderPart(row.Session.Course);
+            string klass = FolderPart(row.Session.Class);
+
+            if (_splitByClass)
+            {
+                string courseFolder = course.Length > 0 ? course : "Sessions";
+                string classFolder = klass.Length > 0 ? klass : "Sessions";
+                return Path.Combine(_root, courseFolder, classFolder);
+            }
+
+            string combined = string.Join(" - ", new[] { course, klass }.Where(part => part.Length > 0));
+            return Path.Combine(_root, combined.Length > 0 ? combined : "Sessions");
+        }
+
+        private static string ClassKey(SvuSession session) =>
+            session.Course.Trim() + "\u001f" + session.Class.Trim();
+
+        private static string FolderPart(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return "";
+            }
+
+            var invalid = Path.GetInvalidFileNameChars();
+            var builder = new System.Text.StringBuilder(value.Length);
+            foreach (char c in value.Trim())
+            {
+                builder.Append(invalid.Contains(c) ? '_' : c);
+            }
+
+            string result = builder.ToString().Trim().TrimEnd('.', ' ').TrimEnd();
+            if (result.Length > 0 && ReservedFolderNames.Contains(result))
+            {
+                result = "_" + result;
+            }
+
+            return result;
+        }
+    }
 
     private string BuildFileName(SvuSession session, string url)
     {

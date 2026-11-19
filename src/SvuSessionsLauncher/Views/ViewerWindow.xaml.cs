@@ -33,6 +33,10 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
     private bool _allowClose;
     private bool _disposed;
     private double _scale = 1.0;
+    private double _zoom = 1.0;
+    private double _requestedScale = 1.0;
+    private bool _fitToWindow = true;
+    private bool _updatingViewport;
     private Task? _fadeTask;
 
     public ViewerWindow(ISessionConnection? bridge = null)
@@ -40,7 +44,11 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
         _bridge = bridge;
         InitializeComponent();
         WindowActivation.Attach(this);
-        SizeChanged += (_, _) => UpdateScaleAvailability();
+        SizeChanged += (_, _) =>
+        {
+            UpdateScaleAvailability();
+            UpdateViewportLayout();
+        };
         DataContext = this;
 
         // The microphone is permanently muted. Re-assert it on a timer because
@@ -161,7 +169,7 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
             }
             else if (sizeChanged)
             {
-                Dispatcher.BeginInvoke(new Action(() => ApplyScale(_scale)), DispatcherPriority.Loaded);
+                Dispatcher.BeginInvoke(new Action(() => ApplyScale(_requestedScale)), DispatcherPriority.Loaded);
             }
         }
         catch (Exception)
@@ -252,9 +260,10 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>
-    /// Resizes the window around its current centre, preserving the shared
-    /// frame's aspect and capping the result to the work area so no black bars
-    /// can appear. The requested scale is ignored when the frame would not fit.
+    /// Applies a scale preset. A preset that fits the work area resizes the
+    /// window; a larger one keeps the window at the largest comfortable size and
+    /// zooms the image inside it, with scrollbars for panning. This keeps 2x/3x
+    /// useful even when the shared frame is already close to screen size.
     /// </summary>
     private void ApplyScale(double requestedScale)
     {
@@ -278,11 +287,26 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
         var chromeWidth = Math.Max(0, ActualWidth - root.ActualWidth);
         var chromeHeight = Math.Max(0, ActualHeight - root.ActualHeight);
 
-        var scale = Math.Max(0.1, Math.Min(requestedScale, maxScale));
-        _scale = scale;
+        var fits = double.IsPositiveInfinity(requestedScale) || requestedScale <= maxScale + 0.001;
+        var windowScale = fits
+            ? (double.IsPositiveInfinity(requestedScale) ? maxScale : Math.Max(0.1, requestedScale))
+            : maxScale;
+        var zoom = fits ? 1.0 : Math.Max(1.0, requestedScale);
 
-        var newWidth = Math.Round(imageWidth * scale + chromeWidth);
-        var newHeight = Math.Round(imageHeight * scale + TitleBarHeight + chromeHeight);
+        _requestedScale = requestedScale;
+        _scale = Math.Max(0.1, windowScale);
+        _zoom = zoom;
+        _fitToWindow = fits;
+
+        ViewportScroll.HorizontalScrollBarVisibility = fits
+            ? ScrollBarVisibility.Disabled
+            : ScrollBarVisibility.Auto;
+        ViewportScroll.VerticalScrollBarVisibility = fits
+            ? ScrollBarVisibility.Disabled
+            : ScrollBarVisibility.Auto;
+
+        var newWidth = Math.Round(imageWidth * _scale + chromeWidth);
+        var newHeight = Math.Round(imageHeight * _scale + TitleBarHeight + chromeHeight);
         var centreX = Left + ActualWidth / 2;
         var centreY = Top + ActualHeight / 2;
 
@@ -292,7 +316,82 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
         Left = Math.Max(work.Left, Math.Min(work.Right - newWidth, centreX - newWidth / 2));
         Top = Math.Max(work.Top, Math.Min(work.Bottom - newHeight, centreY - newHeight / 2));
 
+        UpdateViewportLayout();
         UpdateScaleAvailability();
+    }
+
+    /// <summary>
+    /// Lays the image out at either the viewport size (fit) or its zoomed pixel
+    /// size. The scroll viewer supplies panning and scrollbars when the zoomed
+    /// image is larger than the window.
+    /// </summary>
+    private void UpdateViewportLayout()
+    {
+        if (_updatingViewport || _framePixelWidth <= 0 || _framePixelHeight <= 0)
+        {
+            return;
+        }
+
+        var viewportWidth = ViewportScroll.ViewportWidth;
+        var viewportHeight = ViewportScroll.ViewportHeight;
+        if (viewportWidth <= 0 || viewportHeight <= 0)
+        {
+            viewportWidth = ViewportScroll.ActualWidth;
+            viewportHeight = ViewportScroll.ActualHeight;
+        }
+
+        if (viewportWidth <= 0 || viewportHeight <= 0)
+        {
+            return;
+        }
+
+        _updatingViewport = true;
+        try
+        {
+            if (_fitToWindow)
+            {
+                ViewportHost.Width = viewportWidth;
+                ViewportHost.Height = viewportHeight;
+            }
+            else
+            {
+                var dpi = VisualTreeHelper.GetDpi(this);
+                var imageWidth = _framePixelWidth / (dpi.DpiScaleX <= 0 ? 1.0 : dpi.DpiScaleX);
+                var imageHeight = _framePixelHeight / (dpi.DpiScaleY <= 0 ? 1.0 : dpi.DpiScaleY);
+                ViewportHost.Width = Math.Max(1, imageWidth * _zoom);
+                ViewportHost.Height = Math.Max(1, imageHeight * _zoom);
+            }
+
+            ViewportImage.Width = double.NaN;
+            ViewportImage.Height = double.NaN;
+        }
+        finally
+        {
+            _updatingViewport = false;
+        }
+
+        Dispatcher.BeginInvoke(new Action(CenterViewport), DispatcherPriority.Loaded);
+    }
+
+    private void CenterViewport()
+    {
+        if (_fitToWindow)
+        {
+            return;
+        }
+
+        var x = Math.Max(0, (ViewportHost.Width - ViewportScroll.ViewportWidth) / 2);
+        var y = Math.Max(0, (ViewportHost.Height - ViewportScroll.ViewportHeight) / 2);
+        ViewportScroll.ScrollToHorizontalOffset(x);
+        ViewportScroll.ScrollToVerticalOffset(y);
+    }
+
+    private void ViewportScroll_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (_fitToWindow)
+        {
+            UpdateViewportLayout();
+        }
     }
 
     private double GetMaxScale()
@@ -325,14 +424,10 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
             return;
         }
 
-        ScaleDoubleButton.IsEnabled = maxScale >= 2.0 - 0.001;
-        ScaleTripleButton.IsEnabled = maxScale >= 3.0 - 0.001;
-
-        if ((ScaleDoubleButton.IsChecked == true && !ScaleDoubleButton.IsEnabled)
-            || (ScaleTripleButton.IsChecked == true && !ScaleTripleButton.IsEnabled))
-        {
-            ScaleMaxButton.IsChecked = true;
-        }
+        // 2x/3x are always usable: when the scaled window would not fit, the
+        // view zooms inside the largest window and the scroll viewer pans it.
+        ScaleDoubleButton.IsEnabled = true;
+        ScaleTripleButton.IsEnabled = true;
     }
 
     private void AudioMuteToggle_Click(object sender, RoutedEventArgs e)
@@ -436,7 +531,7 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
         _allowClose = true;
         if (!IsVisible)
         {
-            Close();
+            CloseSafely();
             return Task.CompletedTask;
         }
 
@@ -450,11 +545,29 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
         {
             BeginAnimation(OpacityProperty, null);
             Opacity = 0;
-            Close();
+            CloseSafely();
             done.TrySetResult();
         };
         BeginAnimation(OpacityProperty, fade);
         return done.Task;
+    }
+
+    /// <summary>Closes unless WPF is already tearing the window down.</summary>
+    private void CloseSafely()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        try
+        {
+            Close();
+        }
+        catch (InvalidOperationException)
+        {
+            // Already closing.
+        }
     }
 
     // Windows 11 rounds every top-level window's corners; on a video surface that

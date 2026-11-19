@@ -526,6 +526,7 @@ html[dir="rtl"] .form-head h2 {
 }
 
 .password-toggle svg {
+    grid-area: 1 / 1;
     width: 17px;
     height: 17px;
     fill: none;
@@ -533,15 +534,18 @@ html[dir="rtl"] .form-head h2 {
     stroke-width: 1.7;
     stroke-linecap: round;
     stroke-linejoin: round;
+    transition: opacity 0.16s ease, transform 0.16s ease;
 }
 
 .password-toggle .eye-off,
 .password-toggle.is-visible .eye {
-    display: none;
+    opacity: 0;
+    transform: scale(0.8);
 }
 
 .password-toggle.is-visible .eye-off {
-    display: block;
+    opacity: 1;
+    transform: none;
 }
 
 .options {
@@ -621,6 +625,10 @@ html[dir="rtl"] .form-head h2 {
 
 .check input:checked + .check-box svg {
     stroke-dashoffset: 0;
+}
+
+.options.is-interactive .check input:not(:checked) + .check-box {
+    animation: check-unpop 0.18s ease-out;
 }
 
 .check:hover input:checked + .check-box {
@@ -802,6 +810,15 @@ html[dir="rtl"] .form-head h2 {
         transform: scale(0.82);
     }
     65% {
+        transform: scale(1.08);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes check-unpop {
+    0% {
         transform: scale(1.08);
     }
     100% {

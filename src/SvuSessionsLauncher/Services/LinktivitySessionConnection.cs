@@ -9,9 +9,9 @@ namespace SvuSessionsLauncher.Services;
 
 /// <summary>
 /// The student side of the session, implemented entirely in-process on top of
-/// <see cref="SessionEngine"/>. It adapts the engine's peer/chat/signal events
-/// into the JSON shapes the chat web UI consumes (<c>hello</c>, <c>peers</c>,
-/// <c>chat</c>, <c>info</c>).
+/// <see cref="SessionEngine"/>. It adapts the engine's peer/chat/viewport/voice
+/// events into the JSON shapes the chat web UI consumes (<c>hello</c>, <c>peers</c>,
+/// <c>chat</c>).
 /// </summary>
 public sealed class LinktivitySessionConnection : ISessionConnection
 {
@@ -26,9 +26,6 @@ public sealed class LinktivitySessionConnection : ISessionConnection
     private bool _sharing;
     private bool _voiceMuted;
     private float _voiceVolume = 1f;
-    private long _viewFrames; // SVUDBG
-    private long _viewDecodeMsTotal; // SVUDBG
-    private long _viewCopyMsTotal; // SVUDBG
 
     public LinktivitySessionConnection(string host, int port, int type, string sessionId, string user,
         int width, int height)
@@ -57,8 +54,7 @@ public sealed class LinktivitySessionConnection : ISessionConnection
                 joined = false;
             }
 
-            Log.Write($"linktivity join result={joined} {host}:{port} session={sessionId} user={_user}");
-            SvuDebugLog.Write("SESS", $"join result={joined} {host}:{port} type={type} session={sessionId} user={_user} {width}x{height}"); // SVUDBG
+            Log.Write($"linktivity join result={joined} {host}:{port} session={sessionId}");
 
             if (!joined)
             {
@@ -192,7 +188,6 @@ public sealed class LinktivitySessionConnection : ISessionConnection
     private void OnSelfJoined(SessionPeer peer)
     {
         Log.Write($"linktivity hello self={peer.User}");
-        SvuDebugLog.Write("SESS", $"self joined name='{peer.User}' conn='{peer.Connection}' clientId='{peer.ClientId}' role='{peer.Role}'"); // SVUDBG
 
         lock (_gate)
         {
@@ -218,8 +213,6 @@ public sealed class LinktivitySessionConnection : ISessionConnection
 
     private void OnChat(SessionChat chat)
     {
-        SvuDebugLog.Write("SESS", $"chat recv user='{chat.User}' node='{chat.Connection}' text='{chat.Text}' self={string.Equals(chat.User, _user, StringComparison.OrdinalIgnoreCase)} archive={chat.FromArchive}"); // SVUDBG
-
         bool self = string.Equals(chat.User, _user, StringComparison.OrdinalIgnoreCase);
 
         // Our own line is shown locally the moment we send it (the server does
@@ -297,7 +290,6 @@ public sealed class LinktivitySessionConnection : ISessionConnection
 
     private void OnViewportData(byte[] stream)
     {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew(); // SVUDBG
         bool changed;
         try
         {
@@ -308,7 +300,6 @@ public sealed class LinktivitySessionConnection : ISessionConnection
             Log.Write($"linktivity viewport failed: {exception.Message}");
             return;
         }
-        long decodeMs = stopwatch.ElapsedMilliseconds; // SVUDBG
 
         // Vendor ViewportProtocol.bufferUpdateComplete: after consuming a frame
         // the receiver asks the host for the next one by writing a single
@@ -353,16 +344,6 @@ public sealed class LinktivitySessionConnection : ISessionConnection
         }
 
         ViewportReceived?.Invoke(new ViewportFrame { Width = width, Height = height, Data = bgra });
-
-        // SVUDBG: report viewport throughput/latency every 60 rendered frames (strip to disable).
-        _viewFrames++;
-        _viewDecodeMsTotal += decodeMs;
-        _viewCopyMsTotal += stopwatch.ElapsedMilliseconds - decodeMs;
-        if (_viewFrames % 60 == 0)
-        {
-            SvuDebugLog.Write("VIEW",
-                $"frames={_viewFrames} avgDecode={_viewDecodeMsTotal / _viewFrames}ms avgBgra={_viewCopyMsTotal / _viewFrames}ms last={stopwatch.ElapsedMilliseconds}ms {width}x{height}");
-        }
     }
 
     private void RaiseSharing(bool active)
@@ -377,7 +358,6 @@ public sealed class LinktivitySessionConnection : ISessionConnection
             _sharing = active;
         }
 
-        SvuDebugLog.Write("VIEW", $"sharing changed active={active}"); // SVUDBG
         SharingChanged?.Invoke(active);
     }
 
@@ -425,7 +405,6 @@ public sealed class LinktivitySessionConnection : ISessionConnection
     private void OnEngineFailed(string reason)
     {
         Log.Write($"linktivity: {reason}");
-        SvuDebugLog.Write("SESS", $"engine failed: {reason}"); // SVUDBG
 
         bool hello;
         lock (_gate)

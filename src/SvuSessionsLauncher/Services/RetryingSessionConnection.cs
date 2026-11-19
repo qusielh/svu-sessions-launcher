@@ -33,6 +33,7 @@ public sealed class RetryingSessionConnection : ISessionConnection
     private const int PerAttemptTimeoutMs = 30000;
 
     private readonly Func<ISessionConnection> _startConnection;
+    private readonly Func<bool> _isOffline;
     private readonly int _maxAttempts;
     private readonly object _gate = new();
 
@@ -45,9 +46,13 @@ public sealed class RetryingSessionConnection : ISessionConnection
     private bool _gaveUp;
     private bool _disposed;
 
-    public RetryingSessionConnection(Func<ISessionConnection> startConnection, int maxAttempts)
+    public RetryingSessionConnection(
+        Func<ISessionConnection> startConnection,
+        int maxAttempts,
+        Func<bool>? isOffline = null)
     {
         _startConnection = startConnection ?? throw new ArgumentNullException(nameof(startConnection));
+        _isOffline = isOffline ?? DefaultIsOffline;
         _maxAttempts = Math.Max(1, maxAttempts);
         BeginAttempt();
     }
@@ -83,7 +88,26 @@ public sealed class RetryingSessionConnection : ISessionConnection
 
     public Task LeaveAsync() => Inner()?.LeaveAsync() ?? Task.CompletedTask;
 
-    public Task PingAsync() => Inner()?.PingAsync() ?? Task.CompletedTask;
+    /// <summary>
+    /// Pings only a joined connection. Before <c>hello</c> the inner link exists
+    /// but the room is not joined yet; answering then would tell the page the
+    /// session is live and re-enable its composer during a rejoin.
+    /// </summary>
+    public Task PingAsync()
+    {
+        ISessionConnection? inner;
+        lock (_gate)
+        {
+            if (!_joined)
+            {
+                return Task.CompletedTask;
+            }
+
+            inner = _inner;
+        }
+
+        return inner?.PingAsync() ?? Task.CompletedTask;
+    }
 
     public Task SendVoiceMuteAsync(bool muted) => Inner()?.SendVoiceMuteAsync(muted) ?? Task.CompletedTask;
 
@@ -100,6 +124,7 @@ public sealed class RetryingSessionConnection : ISessionConnection
             }
 
             _attempt = 0;
+            _failures = 0;
             _gaveUp = false;
         }
 
@@ -240,22 +265,55 @@ public sealed class RetryingSessionConnection : ISessionConnection
         {
             StopGuard();
             Detach();
+
+            // The live stream is gone; hide the viewer instead of leaving the
+            // last frame frozen on screen. It reappears when the rejoined
+            // connection starts sharing again.
+            SharingChanged?.Invoke(false);
+
             Log.Write($"session dropped after join (code {code}); rejoining");
-            Task.Run(async () =>
-            {
-                await Task.Delay(1200);
-                BeginAttempt();
-            });
+            ScheduleRejoin(1200);
             return;
         }
 
         OnAttemptFailed(attemptNumber);
     }
 
+    /// <summary>
+    /// Waits out a short network blip (or the whole offline period) before the
+    /// next join attempt. Offline time never spends the attempt budget, so a
+    /// live room waits for the network instead of being closed.
+    /// </summary>
+    private void ScheduleRejoin(int delayMs)
+    {
+        Task.Run(async () =>
+        {
+            if (delayMs > 0)
+            {
+                await Task.Delay(delayMs);
+            }
+
+            await WaitForNetworkAsync();
+            BeginAttempt();
+        });
+    }
+
+    private async Task WaitForNetworkAsync()
+    {
+        while (!_disposed && IsOffline())
+        {
+            await Task.Delay(2000);
+        }
+    }
+
     private void OnAttemptFailed(int attemptNumber)
     {
         bool retry;
         bool wasLive;
+
+        // Probe outside the lock: a network probe can take a moment and the UI
+        // reads Inner()/HasExited from other threads.
+        bool offline = IsOffline();
         lock (_gate)
         {
             if (_disposed || _joined || _gaveUp || attemptNumber != _attempt)
@@ -265,18 +323,28 @@ public sealed class RetryingSessionConnection : ISessionConnection
 
             wasLive = _everJoined;
 
-            // Budget is per outage: a successful join resets it, so a long
-            // session that drops repeatedly keeps recovering.
-            _failures++;
-
-            // A join that fails while the machine has no network at all cannot
-            // be fixed by another silent attempt, so give up at once: the page
-            // then shows its "check your internet" card (and Retry) after this
-            // single failure instead of waiting out the other attempts.
-            retry = !IsOffline() && _failures < _maxAttempts;
-            if (!retry)
+            if (wasLive && offline)
             {
-                _gaveUp = true;
+                // A live room that lost the network is not a failed join: keep
+                // the room open and wait for connectivity instead of spending
+                // the outage budget and closing the session.
+                retry = true;
+            }
+            else
+            {
+                // Budget is per outage: a successful join resets it, so a long
+                // session that drops repeatedly keeps recovering.
+                _failures++;
+
+                // A join that fails while the machine has no network at all
+                // cannot be fixed by another silent attempt, so give up at once:
+                // the page then shows its "check your internet" card (and Retry)
+                // after this single failure instead of waiting out the others.
+                retry = !offline && _failures < _maxAttempts;
+                if (!retry)
+                {
+                    _gaveUp = true;
+                }
             }
         }
 
@@ -285,7 +353,14 @@ public sealed class RetryingSessionConnection : ISessionConnection
 
         if (retry)
         {
-            BeginAttempt();
+            if (wasLive && offline)
+            {
+                ScheduleRejoin(0);
+            }
+            else
+            {
+                BeginAttempt();
+            }
         }
         else if (wasLive)
         {
@@ -304,7 +379,19 @@ public sealed class RetryingSessionConnection : ISessionConnection
     /// cable out). Mirrors the page's own <c>navigator.onLine</c> heuristic;
     /// best effort so a probe failure simply keeps normal retrying.
     /// </summary>
-    private static bool IsOffline()
+    private bool IsOffline()
+    {
+        try
+        {
+            return _isOffline();
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool DefaultIsOffline()
     {
         try
         {

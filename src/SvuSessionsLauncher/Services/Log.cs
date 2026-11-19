@@ -27,32 +27,4 @@ public static class Log
             // Logging must never take the app down.
         }
     }
-
-    /// <summary>
-    /// Temporary performance probe. Runs <paramref name="action"/> and logs how
-    /// many milliseconds it took, including a synchronous flush of queued WPF
-    /// layout + render work so the figure reflects what the user actually feels
-    /// (not just the collection-code cost). Call sites are marked with a
-    /// "PERF PROBE" comment for easy removal once tuning is finished.
-    /// </summary>
-    public static void Perf(string label, Action action)
-    {
-        var sw = System.Diagnostics.Stopwatch.StartNew();
-        action();
-
-        try
-        {
-            var dispatcher = System.Windows.Application.Current?.Dispatcher;
-            if (dispatcher is not null && dispatcher.CheckAccess())
-            {
-                dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
-            }
-        }
-        catch
-        {
-            // Probing must never take the app down.
-        }
-
-        Write($"[perf] {label}: {sw.ElapsedMilliseconds} ms");
-    }
 }

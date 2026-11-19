@@ -358,12 +358,26 @@
             </Grid>
         </Border>
 
-        <!-- Viewer viewport -->
+        <!-- Viewer viewport. The image is laid out at its scaled size so the
+             scroll viewer can pan a 2x/3x view that is larger than the window. -->
         <Grid Grid.Row="1" Background="Black">
-            <Image x:Name="ViewportImage"
-                   Stretch="Uniform"
-                   SnapsToDevicePixels="False"
-                   FlowDirection="LeftToRight"/>
+            <ScrollViewer x:Name="ViewportScroll"
+                          Background="Black"
+                          HorizontalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalContentAlignment="Center"
+                          VerticalContentAlignment="Center"
+                          PanningMode="Both"
+                          SizeChanged="ViewportScroll_SizeChanged">
+                <Grid x:Name="ViewportHost" Background="Black"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Center">
+                    <Image x:Name="ViewportImage"
+                           Stretch="Uniform"
+                           SnapsToDevicePixels="False"
+                           FlowDirection="LeftToRight"/>
+                </Grid>
+            </ScrollViewer>
             <Border Background="Black"
                     Visibility="{Binding HasNoFrame, Converter={StaticResource BoolToVis}, FallbackValue=Visible}">
                 <TextBlock Text="Waiting for screen share..."

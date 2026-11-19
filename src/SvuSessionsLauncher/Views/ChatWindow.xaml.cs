@@ -74,9 +74,16 @@ public partial class ChatWindow : Window
         Closed += OnClosed;
         StateChanged += OnWindowStateChanged;
         ThemeManager.Changed += OnThemeChanged;
+        ThemeManager.PreviewChanged += OnThemePreviewChanged;
     }
 
     public bool IsClosed => _closed;
+
+    /// <summary>
+    /// True when the window is closing because a live session could not be
+    /// recovered, rather than because the user left it.
+    /// </summary>
+    public bool EndedUnexpectedly { get; private set; }
 
     /// <summary>
     /// Raised once the live connection has been dropped and the window should
@@ -263,7 +270,7 @@ public partial class ChatWindow : Window
             Log.Write($"WebView2 init failed: {ex}");
             if (_prewarming)
             {
-                Close();
+                CloseSafely();
                 return;
             }
 
@@ -273,7 +280,7 @@ public partial class ChatWindow : Window
                 "SVU Sessions",
                 MessageBoxButton.OK,
                 MessageBoxImage.Error);
-            Close();
+            CloseSafely();
             return;
         }
 
@@ -310,6 +317,11 @@ public partial class ChatWindow : Window
         }
 
         _pending.Clear();
+
+        // A preview can land while the page is still loading (before its
+        // setAppTheme hook exists). Re-apply the current look now that it is
+        // ready so no drag is lost.
+        PushThemeToPage();
         Log.Write($"[timing] chat: page ready at {_sinceCreated.ElapsedMilliseconds} ms");
         RevealChat();
     }
@@ -379,6 +391,7 @@ public partial class ChatWindow : Window
                 return;
             }
 
+            EndedUnexpectedly = true;
             await SignalSessionCloseAsync(false);
         });
     }
@@ -456,7 +469,7 @@ public partial class ChatWindow : Window
         if (!IsVisible)
         {
             _allowClose = true;
-            Close();
+            CloseSafely();
             return Task.CompletedTask;
         }
 
@@ -471,11 +484,33 @@ public partial class ChatWindow : Window
             BeginAnimation(OpacityProperty, null);
             Opacity = 0;
             _allowClose = true;
-            Close();
+            CloseSafely();
             done.TrySetResult();
         };
         BeginAnimation(OpacityProperty, fade);
         return done.Task;
+    }
+
+    /// <summary>
+    /// Closes the window unless WPF is already tearing it down. A queued fade
+    /// can finish while the window is in its closing pass, and calling
+    /// <see cref="Window.Close"/> then throws; there is nothing left to do.
+    /// </summary>
+    private void CloseSafely()
+    {
+        if (_closed)
+        {
+            return;
+        }
+
+        try
+        {
+            Close();
+        }
+        catch (InvalidOperationException)
+        {
+            // Already closing.
+        }
     }
 
     private async void OnWebMessage(object? sender, CoreWebView2WebMessageReceivedEventArgs e)
@@ -562,7 +597,7 @@ public partial class ChatWindow : Window
         q.Append("&hd1=").Append(Hex(stops[1]));
         q.Append("&hd2=").Append(Hex(stops[2]));
         // Bust WebView2's file cache so a rebuilt page never reuses the old splash logic.
-        q.Append("&v=20261106l");
+        q.Append("&v=20261117c");
         return q.ToString();
     }
 
@@ -608,17 +643,41 @@ public partial class ChatWindow : Window
             try
             {
                 Web.DefaultBackgroundColor = GetWebViewBackground();
-
-                if (Web.CoreWebView2 != null)
-                {
-                    Web.CoreWebView2.ExecuteScriptAsync(BuildThemeScript());
-                }
+                PushThemeToPage();
             }
             catch
             {
                 // Ignore theme update failures.
             }
         });
+    }
+
+    /// <summary>
+    /// A colour-picker drag only previews the accent. The WPF palette stays
+    /// untouched, but the chat page still needs the new tint immediately, even
+    /// while this window sits behind the studio.
+    /// </summary>
+    private void OnThemePreviewChanged()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            try
+            {
+                PushThemeToPage();
+            }
+            catch
+            {
+                // Ignore theme update failures.
+            }
+        });
+    }
+
+    private void PushThemeToPage()
+    {
+        if (Web.CoreWebView2 != null)
+        {
+            Web.CoreWebView2.ExecuteScriptAsync(BuildThemeScript());
+        }
     }
 
     private void OnNavigationStarting(object? sender, CoreWebView2NavigationStartingEventArgs e)
@@ -689,6 +748,7 @@ public partial class ChatWindow : Window
         _closed = true;
         StateChanged -= OnWindowStateChanged;
         ThemeManager.Changed -= OnThemeChanged;
+        ThemeManager.PreviewChanged -= OnThemePreviewChanged;
         ReleaseBridge();
     }
 }

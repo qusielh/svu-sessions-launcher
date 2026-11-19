@@ -109,13 +109,6 @@ public sealed class SessionChat
 
 }
 
-public sealed class SessionSignal
-{
-    public string User { get; set; } = "";
-    public string Connection { get; set; } = "";
-    public string Value { get; set; } = "";
-}
-
 public sealed class SessionEngine : IDisposable
 {
     public const string ClientType = "WebDemo";
@@ -125,7 +118,6 @@ public sealed class SessionEngine : IDisposable
     public event Action<SessionPeer>? PeerUpdated;
     public event Action<SessionPeer>? PeerRemoved;
     public event Action<SessionChat>? ChatReceived;
-    public event Action<SessionSignal>? SignalReceived;
     public event Action<byte[]>? ViewportReceived;
     public event Action<byte[]>? VoiceFrameReceived;
     public event Action<string>? VoiceEndpointReceived;
@@ -205,11 +197,10 @@ public sealed class SessionEngine : IDisposable
         try
         {
             connection.Send(Messages.MarshallHeartBeatRequest());
-            SvuDbg($"heartbeat sent route={connection.Route}"); // SVUDBG
         }
-        catch (Exception exception)
+        catch
         {
-            SvuDbg($"heartbeat failed: {exception.Message}"); // SVUDBG
+            // Best-effort: the join below fails cleanly if the link is down.
         }
 
         // digitalCertificate=true: the vendor's PrivilegeManager.digitalCertificate()
@@ -228,8 +219,6 @@ public sealed class SessionEngine : IDisposable
             Failed?.Invoke("join send failed: " + exception.Message);
             return false;
         }
-
-        SvuDbg($"join sent route={connection.Route} type={ClientType} session={sessionId} user={user} {width}x{height}"); // SVUDBG
 
         // Port of what the vendor client does immediately after a successful
         // join: ChatApplet issues INIT_CONTROL (ConnectionApplet 108 ->
@@ -275,8 +264,6 @@ public sealed class SessionEngine : IDisposable
     // microphone; the mic is never muted or unmuted by the engine.
     private void StartServerControl(LinkConnection connection, int index)
     {
-        SvuDbg($"server control-start index={index}"); // SVUDBG
-
         if (index == Messages.ControlIndexViewer)
         {
             // ViewerApplet reply is ONLY the bare control=3 request=0 [03]
@@ -321,7 +308,6 @@ public sealed class SessionEngine : IDisposable
         {
             // Self may not be known yet; open once the roster arrives.
             _voicePending = true;
-            SvuDbg("voice channel: no self node yet, deferring"); // SVUDBG
             return;
         }
 
@@ -329,11 +315,10 @@ public sealed class SessionEngine : IDisposable
         {
             connection.Send(Messages.MarshallVoiceAnnounce(_voiceNode));
             _voiceChannelOpened = true;
-            SvuDbg($"voice channel opened node='{_voiceNode}' (announce only)"); // SVUDBG
         }
-        catch (Exception exception)
+        catch
         {
-            SvuDbg($"voice channel open failed: {exception.Message}"); // SVUDBG
+            // Voice is optional; a failed announce must not fail the session.
         }
     }
 
@@ -349,11 +334,10 @@ public sealed class SessionEngine : IDisposable
         try
         {
             connection.Send(Messages.MarshallControlStartRequest(index));
-            SvuDbg($"control-start sent index={index}"); // SVUDBG
         }
-        catch (Exception exception)
+        catch
         {
-            SvuDbg($"control-start failed index={index}: {exception.Message}"); // SVUDBG
+            // A failed control frame must not tear down the session.
         }
     }
 
@@ -362,11 +346,10 @@ public sealed class SessionEngine : IDisposable
         try
         {
             connection.Send(Messages.MarshallInitControlRequest(index));
-            SvuDbg($"control-init sent index={index}"); // SVUDBG
         }
-        catch (Exception exception)
+        catch
         {
-            SvuDbg($"control-init failed index={index}: {exception.Message}"); // SVUDBG
+            // A failed control frame must not tear down the session.
         }
     }
 
@@ -376,11 +359,10 @@ public sealed class SessionEngine : IDisposable
         try
         {
             connection.Send(Messages.MarshallNodeUpdateRequest(null));
-            SvuDbg("node-update (preload done) sent"); // SVUDBG
         }
-        catch (Exception exception)
+        catch
         {
-            SvuDbg($"node-update failed: {exception.Message}"); // SVUDBG
+            // A failed control frame must not tear down the session.
         }
     }
 
@@ -390,11 +372,10 @@ public sealed class SessionEngine : IDisposable
         try
         {
             connection.Send(Messages.MarshallFileSystemRegisterRequest(controlIndex, appletName));
-            SvuDbg($"file-register sent index={controlIndex} name={appletName}"); // SVUDBG
         }
-        catch (Exception exception)
+        catch
         {
-            SvuDbg($"file-register failed index={controlIndex}: {exception.Message}"); // SVUDBG
+            // A failed control frame must not tear down the session.
         }
     }
 
@@ -424,7 +405,6 @@ public sealed class SessionEngine : IDisposable
         string own = Self?.Connection ?? "";
         byte[] body = Messages.MarshallStrings(new[] { stamp, User, own, text });
         Message message = new Message(Message.Chat, Message.Text, body, body.Length, Message.FlagArchive);
-        SvuDbg($"chat send user={User} node='{own}' (selfNull={Self is null}) textLen={text.Length} bodyLen={body.Length}"); // SVUDBG
         try
         {
             connection.Send(message);
@@ -453,8 +433,6 @@ public sealed class SessionEngine : IDisposable
         int control = message.GetControl();
         int request = message.GetRequest();
 
-        SvuDbg($"dispatch ctl={control} req={request} flags={message.GetFlags()} len={message.BufferLength}"); // SVUDBG
-
         if (control == Message.Chain)
         {
             byte[] nested = message.ReadAll();
@@ -470,13 +448,6 @@ public sealed class SessionEngine : IDisposable
             return;
         }
 
-        if (control == Message.ConnectionPoint && request == Messages.RequestDistribute)
-        {
-            // Private chat is disabled in this build, so distributed chat
-            // envelopes are ignored instead of being unwrapped into the room.
-            return;
-        }
-
         if (control == Message.Manager)
         {
             if (request == 3000 || request == 3001 || request == 3004 || request == 4004)
@@ -485,7 +456,6 @@ public sealed class SessionEngine : IDisposable
                 if (fields.Length < 3) return;
 
                 SessionPeer peer = SessionPeer.FromFields(fields);
-                SvuDbg($"manager req={request} fieldCount={fields.Length} name='{peer.User}' conn='{peer.Connection}' role='{peer.Role}' self={string.Equals(peer.User, User, StringComparison.OrdinalIgnoreCase)}"); // SVUDBG
                 if (request == 4004 || string.Equals(peer.User, User, StringComparison.OrdinalIgnoreCase))
                 {
                     Self = peer;
@@ -525,16 +495,6 @@ public sealed class SessionEngine : IDisposable
             if (request == Message.Text || request == Message.Data)
             {
                 EmitChat(fields, false);
-            }
-            else if (request == Message.Info)
-            {
-                SvuDbg($"chat info user='{At(fields, 1)}' node='{At(fields, 2)}' value='{At(fields, 3)}'"); // SVUDBG
-                SignalReceived?.Invoke(new SessionSignal
-                {
-                    User = At(fields, 1),
-                    Connection = At(fields, 2),
-                    Value = At(fields, 3)
-                });
             }
             return;
         }
@@ -596,30 +556,20 @@ public sealed class SessionEngine : IDisposable
             // Voice index 2 is the tutor's enable/disable-mic request. This client
             // is listen-only and sends no periodic voice frames, so there is no
             // outbound mic to re-enable; deliberately do not restart voice traffic.
-            SvuDbg($"control handshake req={request} index={index} value={value}"); // SVUDBG
-            return;
-        }
-
-        if (control == Messages.ControlManager && request == Messages.RequestControlCommand)
-        {
-            string[] fields = SafeStrings(message);
-            string name = At(fields, 0);
-            SvuDbg($"control command name='{name}'"); // SVUDBG
             return;
         }
     }
 
     private void EmitChat(string[] fields, bool fromArchive)
     {
-        SvuDbg($"chat recv user='{At(fields, 1)}' node='{At(fields, 2)}' text='{At(fields, 3)}' archive={fromArchive}"); // SVUDBG
-    ChatReceived?.Invoke(new SessionChat
-    {
-        Timestamp = At(fields, 0),
-        User = At(fields, 1),
-        Connection = At(fields, 2),
-        Text = At(fields, 3),
-        FromArchive = fromArchive
-    });
+        ChatReceived?.Invoke(new SessionChat
+        {
+            Timestamp = At(fields, 0),
+            User = At(fields, 1),
+            Connection = At(fields, 2),
+            Text = At(fields, 3),
+            FromArchive = fromArchive
+        });
     }
 
     // MessageArchive.unmarshallChatArchive (ChatApplet.java:501). The archive
@@ -636,7 +586,6 @@ public sealed class SessionEngine : IDisposable
         int length = message.BufferLength;
         if (length <= 8) return;
 
-        SvuDbg($"chat archive len={length}"); // SVUDBG
         using MemoryStream stream = new MemoryStream(body, 0, length, false);
         while (stream.Position + 8 + Message.Headersize <= stream.Length)
         {
@@ -785,9 +734,6 @@ public sealed class SessionEngine : IDisposable
     }
 
     private static string At(string[] fields, int index) => index < fields.Length ? fields[index] : "";
-
-    private static void SvuDbg(string message) => // SVUDBG
-        SvuSessionsLauncher.Services.SvuDebugLog.Write("ENG", message); // SVUDBG
 
     private static string ExtractEndpoint(Message message)
     {

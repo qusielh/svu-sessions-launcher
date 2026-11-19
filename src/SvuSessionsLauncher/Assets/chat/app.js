@@ -53,7 +53,18 @@
     return typeof navigator !== "undefined" && navigator.onLine === false;
   }
 
+  function renderComposer() {
+    var down = !conn.up;
+
+    el.input.placeholder = down
+      ? (isOfflineNet() ? "No internet connection" : "Reconnecting\u2026")
+      : "Type a message\u2026";
+    el.sendBtn.disabled = down || el.input.value.trim().length === 0;
+  }
+
   function renderSub() {
+    renderComposer();
+
     if (conn.fixed) {
       el.chatSub.classList.add("off");
       el.chatSub.textContent = conn.fixed;
@@ -66,8 +77,16 @@
       return;
     }
 
-    var left = Math.max(0, Math.ceil((conn.nextProbe - Date.now()) / 1000));
     el.chatSub.classList.add("off");
+
+    // While the machine is offline there is nothing to retry yet, so do not
+    // leave a countdown frozen on screen; wait for the browser's online event.
+    if (isOfflineNet()) {
+      el.chatSub.textContent = conn.reason || "No internet connection";
+      return;
+    }
+
+    var left = Math.max(0, Math.ceil((conn.nextProbe - Date.now()) / 1000));
     el.chatSub.textContent = conn.reason + " \u00b7 retrying in " + left + "s";
   }
 
@@ -249,15 +268,35 @@
     if (now >= conn.nextProbe) {
       conn.nextProbe = now + PROBE_MS;
       probe();
-      if (!isOfflineNet() && now - conn.lastLive <= STALL_MS) {
-        setUp();
-      }
+      // Do not flip back to "connected" here: only a real event (or the
+      // wrapper's pong for a joined link) proves the room is back. A timer
+      // alone would re-enable the composer during a rejoin before hello.
     }
   }
 
   window.addEventListener("online", function () {
-    conn.lastLive = Date.now();
-    setUp();
+    // A terminal join failure waits for the user's Retry; do not clear it
+    // just because the adapter came back.
+    if (conn.fixed) {
+      return;
+    }
+
+    conn.nextProbe = 0;
+
+    if (!announcedJoin) {
+      conn.lastLive = Date.now();
+      setUp();
+      return;
+    }
+
+    // Mid-session rejoin: stay down until the engine actually answers. Put the
+    // reconnect copy back after the offline banner so the header does not keep
+    // claiming "No internet connection" once the adapter is back.
+    if (!conn.up) {
+      setDown("Connection lost");
+    }
+
+    probe();
   });
 
   window.addEventListener("offline", function () {
@@ -583,12 +622,25 @@
     // attempt, not a live engine, so they must not count as a heartbeat
     // (which would wrongly mark the link established/live).
     if (m.t === "retrying") {
-      resetToConnecting();
+      // The first join keeps its full loader. A rejoin after a live drop must
+      // leave the room on screen: show the reconnect status and keep the
+      // composer disabled until hello arrives.
+      if (announcedJoin) {
+        setDown("Connection lost");
+      } else {
+        resetToConnecting();
+      }
+
       return;
     }
 
     if (m.t === "joinFailed") {
-      showJoinFailed();
+      if (announcedJoin) {
+        setDown("Connection failed");
+      } else {
+        showJoinFailed();
+      }
+
       return;
     }
 
@@ -646,7 +698,7 @@
 
   function send() {
     var text = el.input.value.replace(/\s+$/, "");
-    if (!text) {
+    if (!text || !conn.up) {
       return;
     }
 
@@ -667,7 +719,7 @@
 
   el.input.addEventListener("input", function () {
     autoGrow(el.input);
-    el.sendBtn.disabled = el.input.value.trim().length === 0;
+    el.sendBtn.disabled = !conn.up || el.input.value.trim().length === 0;
   });
 
   el.input.addEventListener("keydown", function (e) {

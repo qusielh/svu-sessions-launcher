@@ -29,9 +29,6 @@ public sealed class ViewportProtocol
     private readonly int[] _mask = new int[3];
     private byte[] _pixels = Array.Empty<byte>();
 
-    // SVUDBG: set to a logger to capture a one-line command summary per frame.
-    public static Action<string>? Trace; // SVUDBG
-
     public int Width { get; private set; }
 
     public int Height { get; private set; }
@@ -59,12 +56,9 @@ public sealed class ViewportProtocol
         bool changed = false;
         int pos = 0;
 
-        var sb = Trace != null ? new System.Text.StringBuilder() : null; // SVUDBG
-
         while (pos < stream.Length)
         {
             int type = stream[pos++];
-            sb?.Append(type).Append('@').Append(pos - 1).Append(','); // SVUDBG
             switch (type)
             {
                 case ViewportUpdate:
@@ -80,7 +74,6 @@ public sealed class ViewportProtocol
                     _mask[0] = ReadInt(stream, pos + 20);
                     _mask[1] = ReadInt(stream, pos + 24);
                     _mask[2] = ReadInt(stream, pos + 28);
-                    sb?.Append("VU(").Append(Width).Append('x').Append(Height).Append("bpp").Append(BytesPerPixel).Append(") "); // SVUDBG
 
                     int needed = Width * Height * BytesPerPixel;
                     if (needed > 0 && _pixels.Length != needed)
@@ -118,7 +111,6 @@ public sealed class ViewportProtocol
                     int h = ReadInt(stream, pos + 12);
                     int size = ReadInt(stream, pos + 16);
                     pos += 20;
-                    sb?.Append("BU(").Append(x).Append(',').Append(y).Append(' ').Append(w).Append('x').Append(h).Append(" sz").Append(size).Append(") "); // SVUDBG
 
                     if (size < 0 || pos + size > stream.Length)
                     {
@@ -172,14 +164,11 @@ public sealed class ViewportProtocol
                 {
                     // Unknown command: stop parsing this stream rather than
                     // mis-read the remainder.
-                    sb?.Append("UNKNOWN(").Append(type).Append(") "); // SVUDBG
-                    if (sb != null) Trace!.Invoke(sb.ToString()); // SVUDBG
                     return changed;
                 }
             }
         }
 
-        if (sb != null) Trace!.Invoke(sb.ToString()); // SVUDBG
         return changed;
     }
 

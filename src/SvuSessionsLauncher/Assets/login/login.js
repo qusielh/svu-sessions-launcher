@@ -166,10 +166,12 @@
     });
 
     savePassword.addEventListener("change", function () {
+        savePassword.closest(".options").classList.add("is-interactive");
         send("savePassword", { value: savePassword.checked });
     });
 
     autoSignIn.addEventListener("change", function () {
+        autoSignIn.closest(".options").classList.add("is-interactive");
         send("autoSignIn", { value: autoSignIn.checked });
     });
 
