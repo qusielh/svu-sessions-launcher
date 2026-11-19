@@ -13,7 +13,7 @@
     <Company>SVU Sessions Launcher contributors</Company>
     <Description>Beta student-only launcher for Syrian Virtual University online sessions.</Description>
     <Copyright>Copyright (c) 2026 SVU Sessions Launcher contributors. MIT licensed.</Copyright>
-    <Version>2.0.0-beta.1</Version>
+    <Version>3.0.0-beta.1</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
   </PropertyGroup>

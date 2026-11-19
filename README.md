@@ -1,6 +1,6 @@
 # SVU Sessions Launcher
 
-**Beta 2.0.0-beta.1** - a student-only desktop launcher for Syrian Virtual University online sessions.
+**Beta 3.0.0-beta.1** - a student-only desktop launcher for Syrian Virtual University online sessions.
 
 This is an unofficial, open-source project. It gives SVU students one Windows app for the
 session workflow: sign in, browse programmes and courses, join live sessions, use room chat
@@ -20,7 +20,7 @@ page. See [Requirements](#requirements) for the runtimes it needs.
 
 ## Screenshots
 
-![The old 2017 launcher and the 2.0.0 beta side by side](docs/images/compare.png)
+![The old 2017 launcher and the 3.0.0 beta side by side](docs/images/compare.png)
 
 | English | العربية |
 | --- | --- |
@@ -36,13 +36,13 @@ and a bundled Java 6 runtime. It worked, but it carried the limitations of that 
 version keeps the same university services and session engine while replacing the client
 around them.
 
-| | Old launcher (2017) | 2.0.0 beta |
+| | Old launcher (2017) | 3.0.0 beta |
 | --- | --- | --- |
 | Starting a session | Added a noticeable delay: VB6 started a bundled Java 6 runtime and a WebDemo applet, with no progress while it loaded. | Connects to the room directly and reports each step. |
 | Arabic | Bolted onto fixed VB6 controls: clipped text, garbled messages, and locale warnings on some systems. | Full right-to-left layout with the Cairo font, live language switching, and matching English/Arabic text. |
 | Window size | Fixed; resizing was disabled. | Resizable main window and viewer, with 1x, 2x, 3x, and Max zoom. |
 | Volume | Only the Windows mixer, through a mic-mute checkbox. | Per-session audio with mute and a 0-300% volume slider. |
-| Microphone | Switched on by default when joining or starting a session. | The student client never transmits microphone audio, and the status bar reports it muted. |
+| Microphone | Switched on by default when joining or starting a session, so an open mic could echo or cut into the tutor's audio. | Muted automatically. The student client never transmits microphone audio, and the status bar reports it muted. |
 | Software | VB6, SOAP Toolkit 3.0, Java 6u45 (2013, end of life), a bundled JRE, and a silent system codec install. | .NET 10 and WebView2, with no bundled Java and no silent system installs. |
 | Saved credentials | Registry values with weak obfuscation. | Windows DPAPI, current-user scope. |
 | Connection loss | No launcher-level recovery; a drop meant rejoining by hand. | Automatic reconnect with a retry budget, offline waiting, and chat kept open. |
@@ -52,6 +52,8 @@ around them.
 
 ### Other fixes in this beta
 
+- Student microphones are muted automatically. The student client never sends microphone
+  audio, so an open mic cannot echo or interrupt the tutor during a lecture.
 - Chat stays open through a network drop. The composer disables, the room stays visible, and
   the status line shows "Reconnecting..." instead of failing silently.
 - The screen-share viewer keeps its size, supports 2x and 3x even on small screens, and hides
@@ -82,6 +84,7 @@ messaging are not included yet.
 
 - This is a student client. The tutor side still needs to be rebuilt before tutor accounts can
   be supported.
+- Student microphones are muted by design; there is no student voice channel in this beta.
 - Tutor voice still uses the university's TrueSpeech stream, so the TrueSpeech ACM codec is
   required for playback.
 - There is no notification system and no private messaging.
@@ -99,6 +102,9 @@ independently.
   support on modern systems. This needs the university's session service to carry the codec.
 - **Rebuild the tutor side.** The student flow is the focus of this beta. A proper tutor
   experience needs host controls, participant management, and the same reliability work.
+- **Bring back student voice properly.** Student microphones stay muted for now so nobody can
+  echo or cut into the tutor's audio. With SVU's collaboration, voice could return with
+  push-to-talk, a moderator mute, and a clear speaking indicator instead of an always-on mic.
 - **Add a real notification system.** Session starting, a new screen share, a finished
   download, and connection problems should reach the user even when the launcher is in the
   background.
