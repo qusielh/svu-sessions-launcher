@@ -13,6 +13,11 @@ in English and Arabic.
 > [GitHub Issues](https://github.com/qusielh/svu-sessions-launcher/issues). If the project
 > is useful to you, please star the repository.
 
+## Download
+
+The latest beta build is on the [Releases](https://github.com/qusielh/svu-sessions-launcher/releases)
+page. See [Requirements](#requirements) for the runtimes it needs.
+
 ## Screenshots
 
 ![The old 2017 launcher and the 2.0.0 beta side by side](docs/images/compare.png)
@@ -103,9 +108,11 @@ independently.
 
 ## Requirements
 
-- Windows 10 or Windows 11
+- Windows 10 or Windows 11 (64-bit)
 - [.NET 10 SDK](https://dotnet.microsoft.com/download) to build
-- Microsoft Edge WebView2 Runtime to run
+- [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/10.0) (x64) to run a prebuilt release
+- The .NET 10 Runtime (x86) for tutor voice playback
+- Microsoft Edge WebView2 Runtime
 - The TrueSpeech ACM codec for tutor voice playback
 
 ## Build
