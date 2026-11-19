@@ -14,8 +14,7 @@ out/
 *.err
 error.log
 
-# Internal development notes and captures
-docs/
+# Internal captures
 *.cap
 
 # Local app state / secrets
