@@ -127,6 +127,14 @@ The launcher is written to:
 src\SvuSessionsLauncher\bin\Release\net10.0-windows\
 ```
 
+## Package a release
+
+```powershell
+.\build-release.ps1
+```
+
+This writes `dist\SVU-Sessions-Launcher-<version>-win-x64.zip` and prints its SHA256.
+
 ## Run
 
 ```powershell
@@ -150,7 +158,7 @@ dotnet run --project .\src\SvuSessionsLauncher\SvuSessionsLauncher.csproj -c Rel
 
 ## Credits
 
-- Cairo, Lemonada, Orbitron, and Rubik fonts are included under the SIL Open Font License.
+- Cairo and Rubik fonts are included under the SIL Open Font License.
 - [Microsoft.Web.WebView2](https://learn.microsoft.com/microsoft-edge/webview2/) is used for
   the UI host.
 
