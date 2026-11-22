@@ -995,6 +995,7 @@ h2 {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .list-virtual {
@@ -1921,6 +1922,7 @@ html[data-lang="en"] .dl-head {
     flex: 1;
     min-height: 0;
     overflow-y: auto;
+    overscroll-behavior: contain;
 }
 
 .dl-group {

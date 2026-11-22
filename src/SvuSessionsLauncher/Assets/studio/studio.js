@@ -14,17 +14,16 @@
     const GAP = 8;
     const TOP = 13;
     const OVERSCAN = 5;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
 
     let state = null;
     let querySignature = "";
     let dataSignature = "";
-    let renderedSignature = "";
     let scrollFrame = 0;
     let listBound = false;
     let hadList = false;
     let pendingSessions = null;
     let pendingDownloads = null;
-    let lastDataSignature = "";
     let appearanceSignature = "";
     let presetsExpanded = false;
     let colorFrame = 0;
@@ -645,6 +644,8 @@
 
     /* ---------- session list (virtualized) ---------- */
 
+    const sessionRows = new Map();
+    let sessionRowsSignature = "";
     let launchDoorSeq = 0;
 
     function launchGlyph(hinge) {
@@ -668,8 +669,6 @@
     }
 
     function initLaunchDoors(root) {
-        const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
         root.querySelectorAll(".ticket-launch[data-door-hinge]").forEach(function (button) {
             if (button.dataset.doorReady === "1") {
                 return;
@@ -747,7 +746,7 @@
                     return;
                 }
                 target = value;
-                if (reduce) {
+                if (reduceMotion.matches) {
                     progress = value;
                     draw(ease(value));
                     return;
@@ -823,9 +822,20 @@
             "</article>";
     }
 
+    function clearSessionRows() {
+        sessionRows.forEach(function (row) {
+            row.remove();
+        });
+        sessionRows.clear();
+        sessionRowsSignature = "";
+    }
+
     function renderWindow() {
         const sessions = state && state.sessions ? state.sessions : [];
         if (sessions.length === 0) {
+            if (sessionRows.size > 0) {
+                clearSessionRows();
+            }
             return;
         }
 
@@ -834,20 +844,34 @@
         const end = Math.min(
             sessions.length,
             start + Math.ceil(list.clientHeight / ITEM) + OVERSCAN * 2);
-        const signature = start + "|" + end + "|" + dataSignature;
 
-        if (signature === renderedSignature) {
-            return;
+        if (dataSignature !== sessionRowsSignature) {
+            clearSessionRows();
+            sessionRowsSignature = dataSignature;
         }
 
-        renderedSignature = signature;
-        let html = "";
-        for (let index = start; index < end; index += 1) {
-            html += ticketCard(sessions[index], index);
-        }
+        // Drop rows that left the window; rows already on screen keep their
+        // nodes so scrolling only ever creates the few new boundary cards.
+        sessionRows.forEach(function (row, index) {
+            if (index < start || index >= end) {
+                row.remove();
+                sessionRows.delete(index);
+            }
+        });
+
         const virtual = $("#listVirtual");
-        virtual.innerHTML = html;
-        initLaunchDoors(virtual);
+        for (let index = start; index < end; index += 1) {
+            if (sessionRows.has(index)) {
+                continue;
+            }
+
+            const template = document.createElement("template");
+            template.innerHTML = ticketCard(sessions[index], index);
+            const row = template.content.firstElementChild;
+            virtual.appendChild(row);
+            initLaunchDoors(row);
+            sessionRows.set(index, row);
+        }
     }
 
     function onScroll() {
@@ -922,14 +946,17 @@
                     "empty",
                     body.noMatches ? t("main.noMatches") : t("main.emptySessions"));
             }
-            renderedSignature = "";
+            clearSessionRows();
             return;
         }
 
         hadList = true;
         spinner.hidden = true;
         virtual.hidden = false;
-        virtual.style.height = Math.max(0, sessions.length * ITEM - GAP) + "px";
+        const height = Math.max(0, sessions.length * ITEM - GAP) + "px";
+        if (virtual.style.height !== height) {
+            virtual.style.height = height;
+        }
 
         const max = Math.max(0, sessions.length * ITEM - list.clientHeight);
         if (list.scrollTop > max) {
@@ -1177,7 +1204,7 @@
 
         if (!downloads) {
             $("#downloadHead").hidden = true;
-            $("#downloadList").innerHTML = "";
+            $("#downloadRows").innerHTML = "";
             downloadListSignature = "";
             setDownloadState("loading", t("download.loading"));
             $("#downloadStart").disabled = true;
@@ -1559,11 +1586,20 @@
         }
     });
 
+    let filterTimer = 0;
+
     function sendFilter() {
-        send("filter", {
-            tutor: $("#tutorFilter").value,
-            classFilter: $("#classFilter").value
-        });
+        // Coalesce keystrokes: every message makes the host re-filter the
+        // collection and re-serialize the whole list, which is wasted work
+        // while the user is still typing.
+        window.clearTimeout(filterTimer);
+        filterTimer = window.setTimeout(function () {
+            filterTimer = 0;
+            send("filter", {
+                tutor: $("#tutorFilter").value,
+                classFilter: $("#classFilter").value
+            });
+        }, 120);
     }
 
     $("#tutorFilter").addEventListener("input", sendFilter);
@@ -1799,28 +1835,6 @@
     window.addEventListener("resize", function () {
         closeSelectMenu(false);
     });
-
-    document.addEventListener("wheel", function (event) {
-        if (event.ctrlKey) {
-            return;
-        }
-
-        const list = event.target.closest(".list, .dl-list");
-        if (!list || list.scrollHeight <= list.clientHeight) {
-            return;
-        }
-
-        const unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? list.clientHeight : 1;
-        const next = Math.max(0, Math.min(
-            list.scrollHeight - list.clientHeight,
-            list.scrollTop + (event.deltaY * unit)));
-        if (next === list.scrollTop) {
-            return;
-        }
-
-        event.preventDefault();
-        list.scrollTop = next;
-    }, { passive: false });
 
     document.addEventListener("change", function (event) {
         const check = event.target.closest("[data-dl-check]");
