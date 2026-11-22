@@ -1,7 +1,6 @@
 using System.Collections;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.IO;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
@@ -1096,9 +1095,7 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    private static string SoapResponsesPath() => Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "SVU Sessions Launcher", "responses");
+    private static string SoapResponsesPath() => AppPaths.ResponsesDirectory;
 
     /// <summary>
     /// The student client never transmits microphone audio; the mic is reported
@@ -1175,9 +1172,7 @@ public sealed class MainViewModel : ObservableObject
                 _user,
                 LinkId: session.SessionId.ToString(),
                 SessionParameter: course.Code);
-            var launchWatch = System.Diagnostics.Stopwatch.StartNew();
             var bridge = await _launcher.LaunchAsync(request);
-            Log.Write($"[timing] LaunchAsync: bridge={bridge is not null} after {launchWatch.ElapsedMilliseconds} ms");
             if (bridge is not null)
             {
                 SessionStarted?.Invoke(this, bridge);

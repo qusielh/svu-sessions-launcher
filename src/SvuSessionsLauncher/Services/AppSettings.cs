@@ -64,25 +64,13 @@ public sealed class AppSettings
     public int MainProgramId { get; set; }
     public int MainCourseId { get; set; }
 
-    private static string SettingsPath
-    {
-        get
-        {
-            var dir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "SVU Sessions Launcher");
-            Directory.CreateDirectory(dir);
-            return Path.Combine(dir, "settings.json");
-        }
-    }
-
     public static AppSettings Load()
     {
         try
         {
-            if (File.Exists(SettingsPath))
+            if (File.Exists(AppPaths.SettingsFile))
             {
-                var json = File.ReadAllText(SettingsPath);
+                var json = File.ReadAllText(AppPaths.SettingsFile);
                 var settings = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
 
                 // Presets now always derive the header from the accent. Clear
@@ -109,7 +97,7 @@ public sealed class AppSettings
     {
         try
         {
-            File.WriteAllText(SettingsPath, JsonSerializer.Serialize(this, JsonOptions));
+            File.WriteAllText(AppPaths.SettingsFile, JsonSerializer.Serialize(this, JsonOptions));
         }
         catch
         {

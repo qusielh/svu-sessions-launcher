@@ -25,10 +25,7 @@ public sealed class CachedWebDemoService : IWebDemoService
     public CachedWebDemoService(IWebDemoService inner, string? path = null)
     {
         _inner = inner;
-        _path = path ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "SvuSessionsLauncher",
-            "catalog.json");
+        _path = path ?? AppPaths.CatalogFile;
     }
 
     public Task<AuthResult> CheckUserPasswordAsync(string username, string password, CancellationToken ct = default)

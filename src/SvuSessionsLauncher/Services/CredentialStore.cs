@@ -22,17 +22,7 @@ public sealed class DpapiCredentialStore : ICredentialStore
 {
     private static readonly byte[] Entropy = "SVU.Sessions.Launcher.v2"u8.ToArray();
 
-    private static string StorePath
-    {
-        get
-        {
-            var dir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "SVU Sessions Launcher");
-            Directory.CreateDirectory(dir);
-            return Path.Combine(dir, "credentials.dat");
-        }
-    }
+    private static string StorePath => AppPaths.CredentialsFile;
 
     public void Save(string username, string password)
     {

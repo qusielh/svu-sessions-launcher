@@ -29,6 +29,10 @@ public sealed class SoapWebDemoService : IWebDemoService
     private string? _user;
     private string? _pass;
 
+    // Raw replies can contain account data. They are only captured while an
+    // explicit Diagnostics run is in progress, never during normal browsing.
+    private bool _diagnostics;
+
     public SoapWebDemoService(string endpoint)
     {
         _endpoint = endpoint;
@@ -111,6 +115,8 @@ public sealed class SoapWebDemoService : IWebDemoService
     /// <summary>
     /// Sweeps the read methods across the <c>option</c> values and records each
     /// raw reply. These are the experiments that reveal the real contract.
+    /// The dump folder is emptied first and capped, so repeated runs cannot
+    /// accumulate an unbounded archive of account data.
     /// </summary>
     public async Task DiagnosticsAsync(CancellationToken ct = default)
     {
@@ -118,17 +124,26 @@ public sealed class SoapWebDemoService : IWebDemoService
         var user = String("userName", _user!);
         var pass = String("passWord", _pass!);
 
-        foreach (var option in new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 })
+        _diagnostics = true;
+        ClearResponseDumps();
+        try
         {
-            await SafeCallAsync("getTodaySessions",
-                Args(user, pass, Int("option", option)), $"opt{option}", ct);
+            foreach (var option in new[] { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 })
+            {
+                await SafeCallAsync("getTodaySessions",
+                    Args(user, pass, Int("option", option)), $"opt{option}", ct);
 
-            await SafeCallAsync("getSessionsByProgCourse",
-                Args(user, pass, Int("option", option), Int("programID", 0), Int("courseID", 0)),
-                $"opt{option}_p0_c0", ct);
+                await SafeCallAsync("getSessionsByProgCourse",
+                    Args(user, pass, Int("option", option), Int("programID", 0), Int("courseID", 0)),
+                    $"opt{option}_p0_c0", ct);
+            }
+
+            await SafeCallAsync("getTodayTraining", Args(user, pass), "all", ct);
         }
-
-        await SafeCallAsync("getTodayTraining", Args(user, pass), "all", ct);
+        finally
+        {
+            _diagnostics = false;
+        }
     }
 
     // ---------------------------------------------------------------- parsing
@@ -245,7 +260,11 @@ public sealed class SoapWebDemoService : IWebDemoService
         {
             using var response = await _http.SendAsync(request, ct);
             text = await response.Content.ReadAsStringAsync(ct);
-            DumpResponse(method, tag, text);
+            if (_diagnostics)
+            {
+                DumpResponse(method, tag, text);
+            }
+
             if (!response.IsSuccessStatusCode)
             {
                 throw new WebDemoServiceException($"HTTP {(int)response.StatusCode}");
@@ -285,7 +304,7 @@ public sealed class SoapWebDemoService : IWebDemoService
         return body;
     }
 
-    /// <summary>Calls a method for diagnostics, ignoring faults (they are dumped).</summary>
+    /// <summary>Calls a method for diagnostics, ignoring faults (they are dumped during the run).</summary>
     private async Task SafeCallAsync(string method, IEnumerable<XElement> args, string tag, CancellationToken ct)
     {
         try
@@ -298,31 +317,53 @@ public sealed class SoapWebDemoService : IWebDemoService
         }
     }
 
-    private static readonly Lazy<string> ResponseDir = new(() =>
-    {
-        var dir = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "SVU Sessions Launcher", "responses");
-        Directory.CreateDirectory(dir);
-        return dir;
-    });
+    private const int MaxDumpFiles = 64;
+    private const int MaxDumpChars = 1_000_000;
 
     /// <summary>
-    /// Saves the raw SOAP response for analysis. Only the <b>response</b> is
-    /// written — never the request, which carries the password. This is how we
-    /// inspect the exact field names and values the server actually returns.
+    /// Saves one raw SOAP reply during an explicit Diagnostics run. Only the
+    /// <b>response</b> is written — never the request, which carries the
+    /// password. The folder is emptied when the run starts and the file count
+    /// is capped, so a diagnostic session cannot become a permanent archive.
     /// </summary>
-    private static void DumpResponse(string method, string tag, string text)
+    private void DumpResponse(string method, string tag, string text)
     {
         try
         {
+            var directory = AppPaths.ResponsesDirectory;
+            if (Directory.GetFiles(directory, "*.xml").Length >= MaxDumpFiles)
+            {
+                return;
+            }
+
+            if (text.Length > MaxDumpChars)
+            {
+                text = text[..MaxDumpChars] + "\n<!-- truncated -->";
+            }
+
             var stamp = DateTime.Now.ToString("yyyyMMdd_HHmmss_fff");
             var suffix = string.IsNullOrWhiteSpace(tag) ? string.Empty : $"_{tag}";
-            File.WriteAllText(Path.Combine(ResponseDir.Value, $"{method}{suffix}_{stamp}.xml"), text);
+            File.WriteAllText(Path.Combine(directory, $"{method}{suffix}_{stamp}.xml"), text);
         }
         catch
         {
             // Diagnostics must never break the data path.
+        }
+    }
+
+    /// <summary>Removes replies left by an earlier diagnostics run.</summary>
+    private static void ClearResponseDumps()
+    {
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(AppPaths.ResponsesDirectory, "*.xml"))
+            {
+                File.Delete(file);
+            }
+        }
+        catch
+        {
+            // A stale dump is not worth failing the run over.
         }
     }
 
