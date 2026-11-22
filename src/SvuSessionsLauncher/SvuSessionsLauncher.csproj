@@ -10,9 +10,9 @@
     <AssemblyName>SvuSessionsLauncher</AssemblyName>
     <AssemblyTitle>SVU Sessions Launcher</AssemblyTitle>
     <Product>SVU Sessions Launcher</Product>
-    <Company>SVU Sessions Launcher contributors</Company>
+    <Company>Qusie</Company>
     <Description>Beta student-only launcher for Syrian Virtual University online sessions.</Description>
-    <Copyright>Copyright (c) 2026 SVU Sessions Launcher contributors. MIT licensed.</Copyright>
+    <Copyright>Copyright (c) 2026 Qusie. MIT licensed.</Copyright>
     <Version>3.0.0-beta.1</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\app.ico</ApplicationIcon>
