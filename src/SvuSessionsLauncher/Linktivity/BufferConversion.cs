@@ -2,6 +2,11 @@ using System.Text;
 
 namespace SvuSessionsLauncher.Linktivity;
 
+/// <summary>
+/// Little-endian integer and length-prefixed string helpers for the vendor wire
+/// format. Several header fields use 2- or 3-byte integers, so the usual
+/// <see cref="BitConverter"/> helpers are not enough.
+/// </summary>
 public static class BufferConversion
 {
     public static void IntToBytes(int value, byte[] target, int offset, int count)

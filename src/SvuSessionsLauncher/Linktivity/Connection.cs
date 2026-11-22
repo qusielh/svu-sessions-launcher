@@ -5,6 +5,13 @@ using System.Threading;
 
 namespace SvuSessionsLauncher.Linktivity;
 
+/// <summary>
+/// Transport constants and handshake helpers shared by <see cref="LinkConnection"/>.
+/// The vendor calls its route negotiation "SSL", but <see cref="SslHello"/> is a
+/// fixed vendor preamble, not TLS: it writes a constant client hello and compares
+/// the reply with a constant server hello. No certificate is validated and no
+/// encryption is negotiated here. See <c>docs/security-privacy.md</c>.
+/// </summary>
 public static class Connection
 {
     public static readonly string[] Type = { "TCP", "Proxy", "HTTP", "SSL", "HTML" };

@@ -3,6 +3,12 @@ using System.Text;
 
 namespace SvuSessionsLauncher.Linktivity;
 
+/// <summary>
+/// Builders and parsers for the vendor's application-level frames: join,
+/// heartbeat, roster, chat, voice and viewport. The field order and capability
+/// strings are copied from the vendor applets; changing them breaks
+/// interoperability, so keep this file close to the captured wire format.
+/// </summary>
 public static class Messages
 {
     public const string User = "User";

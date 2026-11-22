@@ -3,6 +3,14 @@ using System.IO.Compression;
 
 namespace SvuSessionsLauncher.Linktivity;
 
+/// <summary>
+/// One Linktivity wire frame: a 16-byte header followed by an optional buffer.
+/// The header carries the control channel, request code, route, flags and
+/// inflated size; <see cref="Messages"/> builds the common frames and
+/// <see cref="LinkConnection"/> moves them over the socket. Optional zlib
+/// compression, a lightweight XOR obfuscation, and the vendor CAST cipher hooks
+/// live here, although the student client never enables the CAST cipher.
+/// </summary>
 public class Message
 {
     public const int Headersize = 16;

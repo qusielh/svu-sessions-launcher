@@ -2,6 +2,13 @@ using System;
 
 namespace SvuSessionsLauncher.Linktivity;
 
+/// <summary>
+/// Port of the vendor's CAST-based block cipher. It is <b>not</b> TLS, and the
+/// student client never enables it: <see cref="LinkConnection.EnableCipher"/>
+/// and <see cref="LinkConnection.SetCipherKey"/> are not called, so session
+/// traffic is effectively unencrypted. Kept for protocol completeness and
+/// documented as a vendor limitation in <c>docs/security-privacy.md</c>.
+/// </summary>
 public class CastCipher
 {
     private readonly byte[] _key = new byte[16];

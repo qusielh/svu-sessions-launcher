@@ -7,6 +7,15 @@ using System.Threading;
 
 namespace SvuSessionsLauncher.Linktivity;
 
+/// <summary>
+/// The vendor's message transport: a TCP socket (optionally through an HTTP
+/// proxy) that negotiates a route, then reads and writes 16-byte-header
+/// <see cref="Message"/> frames. Despite the <c>Connection.Ssl</c> name, the
+/// handshake is a fixed vendor preamble rather than TLS; the optional
+/// <see cref="CastCipher"/> is never enabled by this app. The class owns its
+/// receive thread and raises <see cref="MessageReceived"/> and
+/// <see cref="Failed"/>.
+/// </summary>
 public sealed class LinkConnection : IDisposable
 {
     public delegate void MessageHandler(LinkConnection connection, Message message);
