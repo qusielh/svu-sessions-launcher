@@ -199,6 +199,17 @@ html.chat-preparing .app {
 /* ---- 1 · SVU monogram (wordmark) ---- */
 
 .monogram {
+  /* Entrance tuning: offsets from the settled position. Positive Y starts
+     below, negative Y starts above; X works the same way left/right. Set both
+     to 0px for a pure fade. */
+  --mono-enter-x: 0px;
+  --mono-enter-y: 10px;
+  --mono-exit-x: 0px;
+  --mono-exit-y: -6px;
+
+  /* Rule draw direction: 172 draws left-to-right, -172 right-to-left. */
+  --mono-rule-from: 172;
+
   overflow: visible;
 }
 
@@ -230,19 +241,19 @@ html.chat-preparing .app {
 @keyframes monoIn {
   0% {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translate(var(--mono-enter-x), var(--mono-enter-y));
   }
   16% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(0, 0);
   }
   82% {
     opacity: 1;
-    transform: translateY(0);
+    transform: translate(0, 0);
   }
   100% {
     opacity: 0;
-    transform: translateY(-6px);
+    transform: translate(var(--mono-exit-x), var(--mono-exit-y));
   }
 }
 
@@ -251,14 +262,14 @@ html.chat-preparing .app {
   stroke-width: 3;
   stroke-linecap: round;
   stroke-dasharray: 172;
-  stroke-dashoffset: 172;
+  stroke-dashoffset: var(--mono-rule-from);
   filter: drop-shadow(0 0 10px color-mix(in srgb, var(--accent) 55%, transparent));
   animation: monoRule 3.1s ease-in-out infinite;
 }
 
 @keyframes monoRule {
   0% {
-    stroke-dashoffset: 172;
+    stroke-dashoffset: var(--mono-rule-from);
     opacity: 0.2;
   }
   26% {
