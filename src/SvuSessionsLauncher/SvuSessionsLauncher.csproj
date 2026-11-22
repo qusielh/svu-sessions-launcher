@@ -23,9 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
-        <None Update="Assets\chat\**\*" CopyToOutputDirectory="PreserveNewest" />
-        <None Update="Assets\studio\**\*" CopyToOutputDirectory="PreserveNewest" />
-        <None Update="Assets\login\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Assets\chat\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Assets\studio\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Assets\login\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="Assets\shared\**\*" CopyToOutputDirectory="PreserveNewest" />
     <None Update="Assets\Fonts\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

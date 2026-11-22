@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Shell;
 using System.Windows.Threading;
 using Microsoft.Web.WebView2.Core;
 using Microsoft.Win32;
@@ -72,50 +73,6 @@ public partial class MainStudioWindow : Window
     private int _lastSentDownloadsRevision = -1;
     private bool _downloadsDirty;
 
-    private const int WmGetMinMaxInfo = 0x0024;
-    private const int MonitorDefaultToNearest = 2;
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativePoint
-    {
-        public int X;
-        public int Y;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct NativeRect
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MinMaxInfo
-    {
-        public NativePoint ptReserved;
-        public NativePoint ptMaxSize;
-        public NativePoint ptMaxPosition;
-        public NativePoint ptMinTrackSize;
-        public NativePoint ptMaxTrackSize;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct MonitorInfo
-    {
-        public int cbSize;
-        public NativeRect rcMonitor;
-        public NativeRect rcWork;
-        public uint dwFlags;
-    }
-
-    [DllImport("user32.dll")]
-    private static extern IntPtr MonitorFromWindow(IntPtr hwnd, int flags);
-
-    [DllImport("user32.dll", CharSet = CharSet.Auto)]
-    private static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
-
     /// <summary>Completes when the studio page has painted and accepted initial state.</summary>
     public Task PageReady => _pageReady.Task;
 
@@ -158,21 +115,52 @@ public partial class MainStudioWindow : Window
         ThemeManager.Changed += OnThemeChanged;
     }
 
-    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowAnimator.Minimize(this);
 
-    private void Maximize_Click(object sender, RoutedEventArgs e) =>
-        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    private void Maximize_Click(object sender, RoutedEventArgs e) => WindowAnimator.ToggleMaximize(this);
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();
 
     protected override void OnStateChanged(EventArgs e)
     {
         base.OnStateChanged(e);
-        var maximized = WindowState == WindowState.Maximized;
+        ApplyMaximizedVisualState(WindowState == WindowState.Maximized);
+        SyncResizeGrips();
+    }
+
+    private void ApplyMaximizedVisualState(bool maximized)
+    {
+        // While maximized the top edge must be caption, not a resize border:
+        // WindowChrome would otherwise report HTTOP for the first 6px and a
+        // double-click at y=0 would not restore the window.
+        if (WindowChrome.GetWindowChrome(this) is { } chrome)
+        {
+            chrome.ResizeBorderThickness = maximized ? new Thickness(0) : new Thickness(6);
+        }
+
         MaximizeGlyph.Data = Geometry.Parse(maximized
             ? "M 2,0 L 9,0 L 9,7 M 0,2 L 7,2 L 7,9 L 0,9 Z"
             : "M 0,0 L 9,0 L 9,9 L 0,9 Z");
         MaximizeButton.ToolTip = maximized ? "Restore" : "Maximize";
+    }
+
+    private async void SyncResizeGrips()
+    {
+        if (Web.CoreWebView2 is not { } core)
+        {
+            return;
+        }
+
+        try
+        {
+            var maximized = WindowState == WindowState.Maximized ? "true" : "false";
+            await core.ExecuteScriptAsync(
+                "if (window.svuWindowState) window.svuWindowState(" + maximized + ");");
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"studio: resize grip state failed: {ex.Message}");
+        }
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -181,32 +169,14 @@ public partial class MainStudioWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         if (hwnd != IntPtr.Zero)
         {
+            WindowAnimator.Attach(this);
             HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
         }
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
-        // WindowChrome maximises a borderless window to the monitor rect plus
-        // its resize border, which leaves a few pixels of the custom title bar
-        // and page off-screen. Clamp the maximised size to the monitor work
-        // area so the chrome and content stay fully visible.
-        if (msg == WmGetMinMaxInfo)
-        {
-            var monitor = MonitorFromWindow(hwnd, MonitorDefaultToNearest);
-            var info = new MonitorInfo { cbSize = Marshal.SizeOf<MonitorInfo>() };
-            if (GetMonitorInfo(monitor, ref info))
-            {
-                var mmi = Marshal.PtrToStructure<MinMaxInfo>(lParam);
-                mmi.ptMaxPosition.X = info.rcWork.Left - info.rcMonitor.Left;
-                mmi.ptMaxPosition.Y = info.rcWork.Top - info.rcMonitor.Top;
-                mmi.ptMaxSize.X = info.rcWork.Right - info.rcWork.Left;
-                mmi.ptMaxSize.Y = info.rcWork.Bottom - info.rcWork.Top;
-                Marshal.StructureToPtr(mmi, lParam, true);
-                handled = true;
-            }
-        }
-
+        WindowAnimator.HandleMessage(hwnd, this, msg, wParam, lParam, ref handled);
         return IntPtr.Zero;
     }
 
@@ -241,7 +211,7 @@ public partial class MainStudioWindow : Window
         core.Settings.IsSwipeNavigationEnabled = false;
         core.Settings.IsGeneralAutofillEnabled = false;
         core.Settings.IsPasswordAutosaveEnabled = false;
-        core.Settings.AreDevToolsEnabled = true;
+        core.Settings.AreDevToolsEnabled = false;
         Web.ZoomFactor = 1.0;
 
         core.WebMessageReceived += OnWebMessage;
@@ -251,7 +221,7 @@ public partial class MainStudioWindow : Window
 
         var page = new Uri(Path.Combine(
             AppContext.BaseDirectory, "Assets", "studio", "index.html")).AbsoluteUri;
-        core.Navigate(page + "?v=20261117c");
+        core.Navigate(page + "?v=20261122h");
 
         await vm.InitializeAsync();
         SchedulePush();
@@ -417,6 +387,7 @@ public partial class MainStudioWindow : Window
 
         _webReady = true;
         _lastSentSessionsRevision = -1;
+        SyncResizeGrips();
         Web.Focus();
         PushState();
     }
@@ -921,6 +892,9 @@ public partial class MainStudioWindow : Window
                     break;
                 case "rendered":
                     Reveal();
+                    break;
+                case "resize":
+                    WindowResizer.Start(this, Text(root, "edge"));
                     break;
                 case "select":
                     SelectSession(vm, Text(root, "key"));

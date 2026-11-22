@@ -134,12 +134,12 @@ svg {
     height: 100vh;
     overflow: hidden;
     opacity: 1;
-    transition: opacity 380ms ease;
 }
 
+/* The window dissolve is the reveal. The page composes fully under the frozen
+   desktop frame, so no content fade trails the 120ms transition. */
 html.chat-preparing .app {
     opacity: 0;
-    transition: none;
 }
 
 .splash {

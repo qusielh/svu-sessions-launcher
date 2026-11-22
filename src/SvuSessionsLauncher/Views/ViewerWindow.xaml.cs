@@ -3,15 +3,22 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
+using System.Windows.Shell;
 using System.Windows.Threading;
 using SvuSessionsLauncher.Helpers;
 using SvuSessionsLauncher.Services;
 
 namespace SvuSessionsLauncher.Views;
 
+/// <summary>
+/// Screen-share viewer. It is pure WPF: <see cref="ISessionConnection"/> frames
+/// arrive as raw BGRA pixels, are copied into a writable bitmap, and are scaled
+/// 1x/2x/3x/Max without touching the session transport. Closing it never ends
+/// the session; the chat owns that lifecycle.
+/// </summary>
 public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
 {
     /// <summary>Height of our single title bar; also the WindowChrome caption height.</summary>
@@ -267,6 +274,13 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
     /// </summary>
     private void ApplyScale(double requestedScale)
     {
+        // A scale preset replaces the window geometry outright, so finish any
+        // active fade before measuring.
+        if (!WindowAnimator.TryCancelForResize(this))
+        {
+            return;
+        }
+
         var maxScale = GetMaxScale();
         if (maxScale <= 0)
         {
@@ -495,10 +509,9 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
         MicIcon.ToolTip = muted ? "Microphone is muted" : "Warning: microphone is live";
     }
 
-    private void MinButton_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void MinButton_Click(object sender, RoutedEventArgs e) => WindowAnimator.Minimize(this);
 
-    private void MaxButton_Click(object sender, RoutedEventArgs e) =>
-        WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+    private void MaxButton_Click(object sender, RoutedEventArgs e) => WindowAnimator.ToggleMaximize(this);
 
     /// <summary>
     /// Closes the viewer on the launcher's terms -- when the chat/session ends or
@@ -512,9 +525,9 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
     }
 
     /// <summary>
-    /// Fades the video surface out before closing. The screen share is already
-    /// stopped by the time the launcher calls this, so there is nothing live to
-    /// keep visible.
+    /// Dissolves the video surface out with the same transition as the chat and
+    /// the window state changes. The screen share is already stopped by the time
+    /// the launcher calls this, so there is nothing live to keep visible.
     /// </summary>
     public Task FadeOutAndCloseAsync()
     {
@@ -529,27 +542,11 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
         }
 
         _allowClose = true;
-        if (!IsVisible)
-        {
-            CloseSafely();
-            return Task.CompletedTask;
-        }
 
-        var done = new TaskCompletionSource();
-        _fadeTask = done.Task;
-        var fade = new DoubleAnimation(Opacity, 0, TimeSpan.FromMilliseconds(200))
-        {
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-        };
-        fade.Completed += (_, _) =>
-        {
-            BeginAnimation(OpacityProperty, null);
-            Opacity = 0;
-            CloseSafely();
-            done.TrySetResult();
-        };
-        BeginAnimation(OpacityProperty, fade);
-        return done.Task;
+        // The viewer is pure WPF, so its own surface can be printed even when
+        // the chat covers it during the coordinated close.
+        _fadeTask = WindowAnimator.FadeOutAndClose(this, CloseSafely, captureCovered: true);
+        return _fadeTask;
     }
 
     /// <summary>Closes unless WPF is already tearing the window down.</summary>
@@ -582,9 +579,15 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
+
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero)
+        {
+            return;
+        }
+
         try
         {
-            var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
             int preference = DwmwcpDoNotRound;
             DwmSetWindowAttribute(hwnd, DwmwaWindowCornerPreference, ref preference, sizeof(int));
         }
@@ -592,12 +595,33 @@ public partial class ViewerWindow : Window, INotifyPropertyChanged, IDisposable
         {
             // Older Windows has no corner preference; nothing to undo.
         }
+
+        HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+        WindowAnimator.Attach(this);
+    }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        WindowAnimator.HandleMessage(hwnd, this, msg, wParam, lParam, ref handled);
+        return IntPtr.Zero;
     }
 
     protected override void OnStateChanged(EventArgs e)
     {
         base.OnStateChanged(e);
-        var maximized = WindowState == WindowState.Maximized;
+        ApplyMaximizedVisualState(WindowState == WindowState.Maximized);
+    }
+
+    private void ApplyMaximizedVisualState(bool maximized)
+    {
+        // While maximized the top edge must be caption, not a resize border:
+        // WindowChrome would otherwise report HTTOP for the first 6px and a
+        // double-click at y=0 would not restore the window.
+        if (WindowChrome.GetWindowChrome(this) is { } chrome)
+        {
+            chrome.ResizeBorderThickness = maximized ? new Thickness(0) : new Thickness(6);
+        }
+
         MaxIcon.Data = (Geometry)FindResource(maximized ? "ViewIcon.Restore" : "ViewIcon.Max");
         MaxButton.ToolTip = maximized ? "Restore" : "Maximise";
     }

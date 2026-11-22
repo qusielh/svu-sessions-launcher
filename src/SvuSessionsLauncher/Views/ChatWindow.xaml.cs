@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
-using System.Windows.Media.Animation;
+using System.Windows.Shell;
 using Microsoft.Web.WebView2.Core;
 using SvuSessionsLauncher.Helpers;
 using SvuSessionsLauncher.Services;
@@ -43,10 +43,7 @@ public partial class ChatWindow : Window
     private ISessionConnection? _bridge;
     private readonly AppSettings _settings;
     private readonly List<string> _pending = new();
-    private readonly Stopwatch _sinceCreated = Stopwatch.StartNew();
-    private bool _sawFirstEvent;
     private bool _webReady;
-    private bool _revealChat;
     private bool _prewarming;
     private bool _closing;
     private bool _closed;
@@ -95,9 +92,15 @@ public partial class ChatWindow : Window
     {
         base.OnSourceInitialized(e);
 
+        var handle = new WindowInteropHelper(this).Handle;
+        if (handle != IntPtr.Zero)
+        {
+            WindowAnimator.Attach(this);
+            HwndSource.FromHwnd(handle)?.AddHook(WndProc);
+        }
+
         try
         {
-            var handle = new WindowInteropHelper(this).Handle;
             var preference = DwmwcpRound;
             DwmSetWindowAttribute(handle, DwmwaWindowCornerPreference, ref preference, sizeof(int));
 
@@ -112,6 +115,12 @@ public partial class ChatWindow : Window
         {
             // Windows 10 has no DWM corner preference; the window stays square.
         }
+    }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        WindowAnimator.HandleMessage(hwnd, this, msg, wParam, lParam, ref handled);
+        return IntPtr.Zero;
     }
 
     private void SetPrewarmWindowStyle(bool prewarming)
@@ -135,14 +144,9 @@ public partial class ChatWindow : Window
         SetWindowLong(handle, GwlExStyle, style);
     }
 
-    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowAnimator.Minimize(this);
 
-    private void Maximize_Click(object sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState == WindowState.Maximized
-            ? WindowState.Normal
-            : WindowState.Maximized;
-    }
+    private void Maximize_Click(object sender, RoutedEventArgs e) => WindowAnimator.ToggleMaximize(this);
 
     private async void Close_Click(object sender, RoutedEventArgs e)
     {
@@ -151,11 +155,43 @@ public partial class ChatWindow : Window
 
     private void OnWindowStateChanged(object? sender, EventArgs e)
     {
-        var maximized = WindowState == WindowState.Maximized;
+        ApplyMaximizedVisualState(WindowState == WindowState.Maximized);
+        SyncResizeGrips();
+    }
+
+    private void ApplyMaximizedVisualState(bool maximized)
+    {
+        // While maximized the top edge must be caption, not a resize border:
+        // WindowChrome would otherwise report HTTOP for the first 6px and a
+        // double-click at y=0 would not restore the window.
+        if (WindowChrome.GetWindowChrome(this) is { } chrome)
+        {
+            chrome.ResizeBorderThickness = maximized ? new Thickness(0) : new Thickness(6);
+        }
+
         MaximizeGlyph.Data = Geometry.Parse(maximized
             ? "M 2,0 L 9,0 L 9,7 M 0,2 L 7,2 L 7,9 L 0,9 Z"
             : "M 0,0 L 9,0 L 9,9 L 0,9 Z");
         MaximizeButton.ToolTip = maximized ? "Restore" : "Maximize";
+    }
+
+    private async void SyncResizeGrips()
+    {
+        if (Web.CoreWebView2 is not { } core)
+        {
+            return;
+        }
+
+        try
+        {
+            var maximized = WindowState == WindowState.Maximized ? "true" : "false";
+            await core.ExecuteScriptAsync(
+                "if (window.svuWindowState) window.svuWindowState(" + maximized + ");");
+        }
+        catch (Exception ex)
+        {
+            Log.Write($"chat: resize grip state failed: {ex.Message}");
+        }
     }
 
     /// <summary>
@@ -177,8 +213,8 @@ public partial class ChatWindow : Window
 
     /// <summary>
     /// Attaches the live session and opens the prewarmed window at its final
-    /// position. The page keeps its themed background from the first frame while
-    /// the window chrome and page content fade in over it.
+    /// position. The destination is captured first, then the window is shown at
+    /// full opacity underneath and the frozen desktop dissolves away.
     /// </summary>
     public void ShowForSession(ISessionConnection bridge)
     {
@@ -191,35 +227,28 @@ public partial class ChatWindow : Window
         var area = SystemParameters.WorkArea;
         var width = ActualWidth > 0 ? ActualWidth : Width;
         var height = ActualHeight > 0 ? ActualHeight : Height;
-        Left = area.Left + Math.Max(0, (area.Width - width) / 2);
-        Top = area.Top + Math.Max(0, (area.Height - height) / 2);
-        Opacity = 0;
+        var target = new Rect(
+            area.Left + Math.Max(0, (area.Width - width) / 2),
+            area.Top + Math.Max(0, (area.Height - height) / 2),
+            width,
+            height);
 
-        if (!IsVisible)
-        {
-            Show();
-        }
+        Opacity = 1;
+        BeginAnimation(OpacityProperty, null);
 
-        var fade = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(260))
+        // Capture the destination before moving the prewarmed window there, then
+        // dissolve from the desktop to the already-painted chat surface.
+        WindowAnimator.Open(this, target, () =>
         {
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
-        };
-        fade.Completed += (_, _) =>
-        {
-            if (_closing || _closed)
+            Left = target.Left;
+            Top = target.Top;
+            if (!IsVisible)
             {
-                return;
+                Show();
             }
+        });
 
-            Opacity = 1;
-            BeginAnimation(OpacityProperty, null);
-            Activate();
-            Log.Write($"[timing] chat: shown at {_sinceCreated.ElapsedMilliseconds} ms");
-        };
-        BeginAnimation(OpacityProperty, fade);
-
-        _revealChat = true;
-        RevealChat();
+        Activate();
     }
 
     private void AttachBridge(ISessionConnection bridge)
@@ -253,7 +282,6 @@ public partial class ChatWindow : Window
 
         _prewarming = false;
         Hide();
-        Log.Write($"[timing] chat: prewarm hidden at {_sinceCreated.ElapsedMilliseconds} ms");
     }
 
     private async void OnLoaded(object sender, RoutedEventArgs e)
@@ -263,7 +291,6 @@ public partial class ChatWindow : Window
             // Reuse the app-wide environment (started at launch) so the chat
             // page — and its loader — paints without a cold start.
             await Web.EnsureCoreWebView2Async(await WebViewRuntime.Environment);
-            Log.Write($"[timing] chat: webview2 ready at {_sinceCreated.ElapsedMilliseconds} ms");
         }
         catch (Exception ex)
         {
@@ -300,7 +327,6 @@ public partial class ChatWindow : Window
         web.NavigationStarting += OnNavigationStarting;
         web.NewWindowRequested += OnNewWindowRequested;
         web.Navigate(page + BuildThemeQuery());
-        Log.Write($"[timing] chat: navigating at {_sinceCreated.ElapsedMilliseconds} ms");
     }
 
     private void MarkWebReady()
@@ -322,23 +348,17 @@ public partial class ChatWindow : Window
         // setAppTheme hook exists). Re-apply the current look now that it is
         // ready so no drag is lost.
         PushThemeToPage();
-        Log.Write($"[timing] chat: page ready at {_sinceCreated.ElapsedMilliseconds} ms");
-        RevealChat();
+        SyncResizeGrips();
+        RevealPage();
     }
 
     /// <summary>
-    /// Releases the page from its background-only holding state after the window
-    /// has started fading in. There is no visibility swap, so the surface never
-    /// blinks between the host window and the WebView.
+    /// Releases the page from its background-only holding state as soon as it is
+    /// ready. This normally happens while the window is prewarmed and hidden, so
+    /// the surface is fully composed before the dissolve ever shows it.
     /// </summary>
-    private void RevealChat()
+    private void RevealPage()
     {
-        if (!_revealChat || !_webReady)
-        {
-            return;
-        }
-
-        _revealChat = false;
         try
         {
             Web.CoreWebView2?.ExecuteScriptAsync(
@@ -354,12 +374,6 @@ public partial class ChatWindow : Window
     {
         Dispatcher.Invoke(() =>
         {
-            if (!_sawFirstEvent)
-            {
-                _sawFirstEvent = true;
-                Log.Write($"[timing] chat: first engine event at {_sinceCreated.ElapsedMilliseconds} ms");
-            }
-
             if (!_webReady)
             {
                 _pending.Add(json);
@@ -450,7 +464,7 @@ public partial class ChatWindow : Window
     }
 
     /// <summary>
-    /// Fades the already-painted window surface out before closing it. The
+    /// Dissolves the already-painted window surface out before closing it. The
     /// launcher calls this alongside the viewer fade.
     /// </summary>
     public Task FadeOutAndCloseAsync()
@@ -466,29 +480,12 @@ public partial class ChatWindow : Window
         }
 
         _closing = true;
-        if (!IsVisible)
+        _fadeTask = WindowAnimator.FadeOutAndClose(this, () =>
         {
             _allowClose = true;
             CloseSafely();
-            return Task.CompletedTask;
-        }
-
-        var done = new TaskCompletionSource();
-        _fadeTask = done.Task;
-        var fade = new DoubleAnimation(Opacity, 0, TimeSpan.FromMilliseconds(200))
-        {
-            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseIn }
-        };
-        fade.Completed += (_, _) =>
-        {
-            BeginAnimation(OpacityProperty, null);
-            Opacity = 0;
-            _allowClose = true;
-            CloseSafely();
-            done.TrySetResult();
-        };
-        BeginAnimation(OpacityProperty, fade);
-        return done.Task;
+        });
+        return _fadeTask;
     }
 
     /// <summary>
@@ -517,6 +514,7 @@ public partial class ChatWindow : Window
     {
         string? type = null;
         string? text = null;
+        string? edge = null;
         try
         {
             using var doc = JsonDocument.Parse(e.WebMessageAsJson);
@@ -530,6 +528,11 @@ public partial class ChatWindow : Window
             {
                 text = x.GetString();
             }
+
+            if (root.TryGetProperty("edge", out var edgeValue))
+            {
+                edge = edgeValue.GetString();
+            }
         }
         catch (Exception ex)
         {
@@ -541,6 +544,9 @@ public partial class ChatWindow : Window
         {
             case "ready":
                 MarkWebReady();
+                break;
+            case "resize":
+                WindowResizer.Start(this, edge);
                 break;
             case "joined":
                 // The page owns its own loader: it plays the in-page SVU loader
@@ -597,7 +603,7 @@ public partial class ChatWindow : Window
         q.Append("&hd1=").Append(Hex(stops[1]));
         q.Append("&hd2=").Append(Hex(stops[2]));
         // Bust WebView2's file cache so a rebuilt page never reuses the old splash logic.
-        q.Append("&v=20261117c");
+        q.Append("&v=20261122c");
         return q.ToString();
     }
 

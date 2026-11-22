@@ -231,7 +231,7 @@ public partial class LoginWindow : Window
                     BeginWindowDrag();
                     return;
                 case "minimize":
-                    WindowState = WindowState.Minimized;
+                    WindowAnimator.Minimize(this);
                     return;
                 case "close":
                     Close();
@@ -349,7 +349,7 @@ public partial class LoginWindow : Window
         var ink = ThemeManager.ResolveOnPrimary(accent, settings?.Ink);
         return $"?theme={theme}&accent={Hex(accent.Primary)}&accentHover={Hex(accent.Hover)}" +
                $"&accentStrong={Hex(accent.Pressed)}&ink={Hex(ink)}&hd0={Hex(stops[0])}&hd1={Hex(stops[1])}" +
-               $"&hd2={Hex(stops[2])}&v=20261117c";
+               $"&hd2={Hex(stops[2])}&v=20261122c";
     }
 
     private const int WmNcLButtonDown = 0xA1;
@@ -397,6 +397,29 @@ public partial class LoginWindow : Window
         }
 
         return System.Drawing.Color.FromArgb(0xEE, 0xF1, 0xF4);
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero)
+        {
+            return;
+        }
+
+        // The sign-in window uses the same dissolve for minimize and restore as
+        // the session windows; without the hook the taskbar would replay the
+        // native animation.
+        WindowAnimator.Attach(this);
+        HwndSource.FromHwnd(hwnd)?.AddHook(WndProc);
+    }
+
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        WindowAnimator.HandleMessage(hwnd, this, msg, wParam, lParam, ref handled);
+        return IntPtr.Zero;
     }
 
     private void OnClosed(object? sender, EventArgs e)
