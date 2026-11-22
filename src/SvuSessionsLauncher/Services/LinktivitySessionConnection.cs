@@ -187,7 +187,7 @@ public sealed class LinktivitySessionConnection : ISessionConnection
 
     private void OnSelfJoined(SessionPeer peer)
     {
-        Log.Write($"linktivity hello self={peer.User}");
+        Log.Write("linktivity hello");
 
         lock (_gate)
         {

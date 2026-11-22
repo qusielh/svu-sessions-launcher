@@ -21,7 +21,7 @@ public sealed class LinktivitySessionLauncher : ISessionLauncher
         var width = (int)System.Windows.SystemParameters.PrimaryScreenWidth;
         var height = (int)System.Windows.SystemParameters.PrimaryScreenHeight;
 
-        Log.Write($"Linktivity student session: {host}:{MeetingPort} session={request.LinkId} user={request.Username} {width}x{height}");
+        Log.Write($"Linktivity student session: {host}:{MeetingPort} session={request.LinkId} {width}x{height}");
 
         var connection = new RetryingSessionConnection(
             () => new LinktivitySessionConnection(
