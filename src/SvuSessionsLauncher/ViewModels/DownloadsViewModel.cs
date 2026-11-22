@@ -92,6 +92,9 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
     private Task _cascade = Task.CompletedTask;
     private bool _suppress;
     private bool _disposed;
+    private bool _initializingTerms;
+    private bool _pendingTermCascade;
+    private bool _restoreAttempted;
 
     public DownloadsViewModel(AppSettings settings)
     {
@@ -140,7 +143,18 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
                 RaiseEnablement();
                 if (!_suppress)
                 {
-                    _cascade = OnTermChosenAsync();
+                    // The initial GET owns the WebForms session state. A term
+                    // picked while it is still running is kept, but its cascade
+                    // waits until the list is ready so two postbacks cannot
+                    // interleave and corrupt the view state.
+                    if (_initializingTerms)
+                    {
+                        _pendingTermCascade = true;
+                    }
+                    else
+                    {
+                        _cascade = OnTermChosenAsync();
+                    }
                 }
             }
         }
@@ -439,18 +453,61 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
 
     private async Task InitializeAsync()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
         IsLoadingTerms = true;
+        _initializingTerms = true;
         try
         {
             await RunAsync(async ct =>
             {
                 var page = await _client.OpenAsync(ct);
-                SetOptions(Terms, page.Dropdowns.GetValueOrDefault(SvuDownloadClient.TermControl), set => SelectedTerm = set);
+                SetOptions(
+                    Terms,
+                    page.Dropdowns.GetValueOrDefault(SvuDownloadClient.TermControl),
+                    () => SelectedTerm,
+                    set => SelectedTerm = set);
             }, session: false);
         }
         finally
         {
+            _initializingTerms = false;
             IsLoadingTerms = false;
+        }
+
+        if (_disposed)
+        {
+            return;
+        }
+
+        bool termReady = _selectedTerm is { } term
+            && !IsPlaceholder(term)
+            && Terms.Any(option => string.Equals(option.Value, term.Value, StringComparison.Ordinal));
+
+        // A pick made during the initial load (or kept from a previous attempt)
+        // still needs its program list; run it now that the form state is free.
+        if (termReady && (_pendingTermCascade || Programs.Count == 0))
+        {
+            _pendingTermCascade = false;
+            _restoreAttempted = true;
+            _cascade = OnTermChosenAsync();
+            return;
+        }
+
+        _pendingTermCascade = false;
+
+        // Restore the last saved filter chain exactly once, and only when the
+        // user has not already chosen a term.
+        if (!_restoreAttempted)
+        {
+            _restoreAttempted = true;
+            if (_selectedTerm is null)
+            {
+                await RestoreAsync();
+            }
         }
     }
 
@@ -522,7 +579,7 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
             await RunAsync(async ct =>
             {
                 var page = await _client.ChooseAsync(SvuDownloadClient.TermControl, term.Value, ct);
-                SetOptions(Programs, page.Dropdowns.GetValueOrDefault(SvuDownloadClient.ProgramControl), set => SelectedProgram = set);
+                SetOptions(Programs, page.Dropdowns.GetValueOrDefault(SvuDownloadClient.ProgramControl), () => SelectedProgram, set => SelectedProgram = set);
             }, session: false);
         }
         finally
@@ -547,7 +604,7 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
             await RunAsync(async ct =>
             {
                 var page = await _client.ChooseAsync(SvuDownloadClient.ProgramControl, program.Value, ct);
-                SetOptions(Courses, page.Dropdowns.GetValueOrDefault(SvuDownloadClient.CourseControl), set => SelectedCourse = set);
+                SetOptions(Courses, page.Dropdowns.GetValueOrDefault(SvuDownloadClient.CourseControl), () => SelectedCourse, set => SelectedCourse = set);
             }, session: false);
         }
         finally
@@ -572,7 +629,7 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
             await RunAsync(async ct =>
             {
                 var page = await _client.ChooseAsync(SvuDownloadClient.CourseControl, course.Value, ct);
-                SetOptions(Tutors, page.Dropdowns.GetValueOrDefault(SvuDownloadClient.TutorControl), set => SelectedTutor = set);
+                SetOptions(Tutors, page.Dropdowns.GetValueOrDefault(SvuDownloadClient.TutorControl), () => SelectedTutor, set => SelectedTutor = set);
             }, session: false);
         }
         finally
@@ -598,7 +655,7 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
             {
                 var page = await _client.ChooseAsync(SvuDownloadClient.TutorControl, tutor.Value, ct);
                 var options = page.Dropdowns.GetValueOrDefault(SvuDownloadClient.ClassControl);
-                SetOptions(Classes, options, set => SelectedClass = set);
+                SetOptions(Classes, options, () => SelectedClass, set => SelectedClass = set);
                 AppendAllClassesOption();
             }, session: false);
         }
@@ -790,11 +847,16 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void SetOptions(ObservableCollection<SvuOption> collection, List<SvuOption>? options, Action<SvuOption?>? select)
+    private void SetOptions(
+        ObservableCollection<SvuOption> collection,
+        List<SvuOption>? options,
+        Func<SvuOption?> current,
+        Action<SvuOption?> select)
     {
         _suppress = true;
         try
         {
+            var previous = current();
             collection.Clear();
             if (options != null)
             {
@@ -811,7 +873,15 @@ public sealed class DownloadsViewModel : ObservableObject, IDisposable
                 }
             }
 
-            select?.Invoke(null);
+            // Keep a pick the user made while this list was loading. If its
+            // value is gone from the new list, clear the selection. The setter
+            // runs suppressed, so preserving a value never starts a second
+            // cascade on top of the one already in flight.
+            var keep = previous is null
+                ? null
+                : collection.FirstOrDefault(option =>
+                    string.Equals(option.Value, previous.Value, StringComparison.Ordinal));
+            select(keep);
         }
         finally
         {
