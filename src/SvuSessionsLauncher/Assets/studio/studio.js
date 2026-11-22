@@ -757,16 +757,31 @@
                 frame = requestAnimationFrame(tick);
             }
 
+            function launchLocked() {
+                const body = state.body || {};
+                return button.disabled || !!body.busy || !!body.active;
+            }
+
             function pointerLeave() {
                 if (!button.matches(":focus-visible")) {
                     go(0);
                 }
             }
 
-            button.addEventListener("pointerenter", function () { go(1); });
+            button.addEventListener("pointerenter", function () {
+                if (launchLocked()) {
+                    go(0);
+                    return;
+                }
+                go(1);
+            });
             button.addEventListener("pointerleave", pointerLeave);
             button.addEventListener("pointercancel", function () { go(0); });
             button.addEventListener("focus", function () {
+                if (launchLocked()) {
+                    go(0);
+                    return;
+                }
                 if (button.matches(":focus-visible")) {
                     go(1);
                 }
