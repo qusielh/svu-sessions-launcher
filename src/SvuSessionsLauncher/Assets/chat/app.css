@@ -122,6 +122,15 @@ body {
     var(--bg);
   overflow: hidden;
   text-rendering: optimizeLegibility;
+  user-select: none;
+}
+
+/* Messages and typed text stay copyable; the surrounding chrome does not. */
+.transcript,
+.transcript *,
+input,
+textarea {
+  user-select: text;
 }
 
 svg {

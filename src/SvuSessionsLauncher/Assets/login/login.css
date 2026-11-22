@@ -116,6 +116,13 @@ body {
     line-height: 1.5;
     visibility: hidden;
     text-rendering: optimizeLegibility;
+    user-select: none;
+}
+
+/* Chrome text stays unselectable; typed credentials remain selectable. */
+input,
+textarea {
+    user-select: text;
 }
 
 html[lang="ar"] body {
@@ -157,7 +164,6 @@ input:focus-visible {
     height: 48px;
     padding: 0 16px 0 20px;
     direction: ltr;
-    user-select: none;
 }
 
 .chrome-brand {

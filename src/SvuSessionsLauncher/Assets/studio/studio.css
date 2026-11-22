@@ -124,6 +124,7 @@ body {
     font-size: 13px;
     line-height: 1.5;
     text-rendering: optimizeLegibility;
+    user-select: none;
 }
 
 svg {
@@ -139,6 +140,12 @@ input,
 select {
     font: inherit;
     color: inherit;
+}
+
+/* Chrome text stays unselectable; typed values remain selectable. */
+input,
+textarea {
+    user-select: text;
 }
 
 button {
