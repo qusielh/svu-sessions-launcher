@@ -103,8 +103,8 @@ dotnet build .\SvuSessionsLauncher.slnx -c Release
 - reads `<Version>` from the project,
 - publishes the launcher framework-dependently for `win-x64`,
 - copies the x86 `SvuVoiceHelper` output that `dotnet publish` does not pick up,
-- removes XML docs, arm64/x86 WebView2 runtimes, the WinForms WebView2 assembly, and any local
-  WebView2 profile,
+- removes XML docs, debug symbols, arm64/x86 WebView2 runtimes, the WinForms WebView2 assembly,
+  and any local WebView2 profile,
 - writes a short `README.txt` with requirements and run instructions,
 - zips the staged app to `dist\SVU-Sessions-Launcher-<version>-win-x64.zip`,
 - prints the SHA256.

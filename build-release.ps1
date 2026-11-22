@@ -34,7 +34,9 @@ try {
         Copy-Item -Destination $app -Force
 
     # WebView2 ships docs and native loaders for every platform. Keep only what win-x64 uses.
+    # Debug symbols are build artifacts; the release is lean and has no use for them.
     Get-ChildItem $app -Filter '*.xml' -File | Remove-Item -Force
+    Get-ChildItem $app -Filter '*.pdb' -File | Remove-Item -Force
     Remove-Item (Join-Path $app 'runtimes\win-arm64') -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item (Join-Path $app 'runtimes\win-x86') -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item (Join-Path $app 'Microsoft.Web.WebView2.WinForms.dll') -Force -ErrorAction SilentlyContinue
