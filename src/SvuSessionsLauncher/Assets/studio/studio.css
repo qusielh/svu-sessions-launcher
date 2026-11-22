@@ -94,7 +94,7 @@
     --radius: 16px;
     --shadow-soft: 0 1px 2px rgba(13, 21, 32, 0.04), 0 12px 32px -24px rgba(13, 21, 32, 0.35);
     --shadow-lift: 0 2px 4px rgba(13, 21, 32, 0.05), 0 18px 32px -22px rgba(13, 21, 32, 0.32);
-    --font-family: "Rubik", "Segoe UI", "Dubai", Tahoma, sans-serif;
+    --font-family: "Rubik", "Cairo", "Segoe UI", "Dubai", Tahoma, sans-serif;
     --font-display: var(--font-family);
 }
 
@@ -1884,16 +1884,29 @@ html[data-lang="en"] .dl-field > span {
     border: 2px solid var(--border);
     border-radius: 12px;
     background: var(--surface);
+    /* The download data is English (course codes, dates, status). Keep the
+       table LTR in every UI language so headers and cells share a start edge. */
+    direction: ltr;
+    /* One source of truth for the table tracks: the sticky header and every
+       data row consume the same columns, gap, height, and horizontal padding. */
+    --dl-columns: 30px 60px minmax(110px, 1.2fr) 64px 54px 126px 108px;
+    --dl-gap: 9px;
+    --dl-pad-x: 12px;
+    --dl-row-height: 41px;
 }
 
 .dl-head {
+    position: sticky;
+    top: 0;
+    z-index: 2;
     display: grid;
-    flex: none;
-    grid-template-columns: 30px 60px minmax(110px, 1.2fr) 64px 54px 126px 108px;
-    gap: 9px;
+    grid-template-columns: var(--dl-columns);
+    gap: var(--dl-gap);
     align-items: center;
-    padding: 8px 12px;
+    min-height: var(--dl-row-height);
+    padding: 0 var(--dl-pad-x);
     border-bottom: 1px solid var(--border);
+    background: var(--surface);
     color: var(--muted);
     font-size: 12px;
     font-weight: 600;
@@ -1942,11 +1955,11 @@ html[data-lang="en"] .dl-head {
 .dl-row {
     position: relative;
     display: grid;
-    grid-template-columns: 30px 60px minmax(110px, 1.2fr) 64px 54px 126px 108px;
-    gap: 9px;
+    grid-template-columns: var(--dl-columns);
+    gap: var(--dl-gap);
     align-items: center;
-    min-height: 41px;
-    padding: 0 12px;
+    min-height: var(--dl-row-height);
+    padding: 0 var(--dl-pad-x);
     border-bottom: 1px solid var(--border);
     font-size: 12.5px;
 }

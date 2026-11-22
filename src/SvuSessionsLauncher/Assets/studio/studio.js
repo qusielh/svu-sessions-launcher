@@ -937,10 +937,6 @@
         }
 
         bindList();
-        if (dataSignature !== lastDataSignature) {
-            lastDataSignature = dataSignature;
-            renderedSignature = "";
-        }
         renderWindow();
     }
 
@@ -1102,12 +1098,12 @@
             downloadListSignature = signature;
 
             if (grouped) {
-                $("#downloadList").innerHTML = groups.map(function (group) {
+                $("#downloadRows").innerHTML = groups.map(function (group) {
                     return downloadGroupHtml(group, downloadGroupTitle(group, showCourse)) +
                         group.rows.map(downloadRowHtml).join("");
                 }).join("");
             } else {
-                $("#downloadList").innerHTML = list.map(downloadRowHtml).join("");
+                $("#downloadRows").innerHTML = list.map(downloadRowHtml).join("");
             }
         }
 
