@@ -18,6 +18,18 @@ in English and Arabic.
 The latest beta build is on the [Releases](https://github.com/qusielh/svu-sessions-launcher/releases)
 page. See [Requirements](#requirements) for the runtimes it needs.
 
+## Documentation
+
+- [Architecture](docs/architecture.md) - process model, startup, windows, services, and the
+  session stack.
+- [Code map](docs/code-map.md) - every folder and file, plus a reviewer's reading route.
+- [Legacy launcher](docs/legacy-launcher.md) - what failed in 2017, why, and how this rebuild
+  solved it.
+- [Security and privacy](docs/security-privacy.md) - credentials, local data, logging, and
+  transport limits.
+- [Release workflow](docs/release-workflow.md) - versioning, packaging, publishing, and patches.
+- [Window transitions](docs/window-transitions.md) - the dissolve system in detail.
+
 ## Screenshots
 
 ![The old 2017 launcher and the 3.0.0 beta side by side](docs/images/compare.png)
@@ -26,15 +38,16 @@ page. See [Requirements](#requirements) for the runtimes it needs.
 | --- | --- |
 | ![SVU Sessions Launcher, English](docs/images/new-launcher-en.png) | ![مشغل الجلسات المتزامنة، العربية](docs/images/new-launcher-ar.png) |
 
-The old screenshot has the account name and tutor names redacted. The new screenshots use
-sample data.
+Tutor names are blurred in all screenshots. The old screenshot is the 2017 VB6 client; the new
+screenshots show the current 3.0.0 beta.
 
 ## Why the launcher was rebuilt
 
 The original launcher was written in 2017 on VB6, the discontinued Microsoft SOAP Toolkit,
 and a bundled Java 6 runtime. It worked, but it carried the limitations of that stack. This
 version keeps the same university services and session engine while replacing the client
-around them.
+around them. The full account of what failed, the cause of each failure, and how this rebuild
+addresses each one is in [docs/legacy-launcher.md](docs/legacy-launcher.md).
 
 | | Old launcher (2017) | 3.0.0 beta |
 | --- | --- | --- |
@@ -58,6 +71,8 @@ around them.
   the status line shows "Reconnecting..." instead of failing silently.
 - The screen-share viewer keeps its size, supports 2x and 3x even on small screens, and hides
   cleanly when a share ends.
+- Maximize, restore, and minimize use one quick dissolve instead of a slow geometry animation,
+  so the page and screen share never stutter. Every window edge and corner resizes.
 - Downloads show a clear state for every row (Queued, Done, Failed, Cancelled) and can retry
   the exact filter step that failed.
 - Theme and accent changes apply immediately to open chat and viewer windows, even when they
@@ -149,18 +164,48 @@ dotnet run --project .\src\SvuSessionsLauncher\SvuSessionsLauncher.csproj -c Rel
 
 ## Project layout
 
-- `src\SvuSessionsLauncher` - WPF host, WebView2 UI, services, and Linktivity client
-- `src\SvuSessionsLauncher\Assets` - login, studio, and chat web assets
-- `src\SvuVoiceHelper` - 32-bit TrueSpeech decode and playback helper
+```text
+src\SvuSessionsLauncher\        WPF host (.NET 10, x64)
+  App.xaml.cs                   startup, services, login -> studio -> session loop
+  Assets\                       login, studio, chat pages; shared resize helper; fonts
+  Helpers\                      dissolve transitions, snapshots, edge/corner resize
+  Linktivity\                   in-process vendor protocol and session engine
+  Localization\                 English/Arabic strings and formatting
+  Models\                       programme, course, session, and download records
+  Services\                     SOAP, catalog cache, credentials, logging, downloads, voice
+  Theming\                      theme, accent, header, and ink palettes
+  ViewModels\                   studio, sign-in, and downloads state
+  Views\                        WPF window hosts for login, studio, chat, viewer
+src\SvuVoiceHelper\             32-bit TrueSpeech decode/playback helper
+docs\                           architecture, code map, legacy history, security, releases, images
+```
+
+See [docs/code-map.md](docs/code-map.md) for a per-file description and a reviewer's reading
+order.
 
 ## Security
 
 - No API keys, passwords, or tokens are stored in this repository.
-- Sign-in credentials are entered by the user; the optional "remember password" store is
-  encrypted with Windows DPAPI.
-- App state, logs, and saved credentials live under `%APPDATA%` and are not committed.
+- Sign-in credentials are entered by the user. The optional "remember password" store is
+  encrypted with Windows DPAPI in current-user scope and lives under `%LOCALAPPDATA%`.
+- Settings, logs, and diagnostic dumps live under `%APPDATA%\SVU Sessions Launcher`; the catalog
+  and credential blob live under `%LOCALAPPDATA%\SVU Sessions Launcher`. None are committed.
+- Logs are sanitized before they reach disk: URL query strings are stripped, password-shaped
+  values and XML password elements are masked, and unknown usernames are redacted. The log
+  rotates at 1 MB.
+- WebView2 DevTools and default context menus are disabled in the sign-in, studio, and chat
+  surfaces. The studio only navigates to local `file:` pages; the chat opens validated
+  `http`/`https` links in the default browser.
 - The recording archive client uses the university's public page and does not send
-  credentials there.
+  credentials there. That page is served over plain HTTP.
+- Linktivity session traffic uses the vendor's fixed handshake, not TLS. The optional CAST cipher
+  is never enabled. This is a limitation of the university's session service; it is documented
+  in [docs/security-privacy.md](docs/security-privacy.md) rather than hidden.
+- Student microphones are never opened or transmitted. Tutor audio is decoded by the x86 helper;
+  mute and volume apply only to that helper's audio session.
+
+Full data-flow, threat-model, and verification details are in
+[docs/security-privacy.md](docs/security-privacy.md).
 
 ## Credits
 
