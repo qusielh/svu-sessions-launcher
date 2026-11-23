@@ -1,11 +1,23 @@
 # The old launcher and why it was rebuilt
 
-This document records what the 2017 launcher was, what failed in practice, the causes behind
-those failures, and how the 3.0.0 rebuild addresses each one. It is meant to be useful to a
-reviewer who never saw the old client and to a future maintainer who is tempted to reintroduce
-one of its shortcuts.
+This document records the 2017 launcher as students met it, the failures that mattered in daily
+use, their causes, and how the 3.0.0 rebuild responds. It is written for a reviewer who never saw
+the old client and for a maintainer who might be tempted to reintroduce one of its shortcuts.
 
-## What the old launcher was
+## The starting point
+
+The rebuild began with a compiled application and an installer, not a repository. The installed
+client identifies itself as "SVU Online Sessions Launcher" 2.00.1000; `SvuSessionLauncher.exe`
+reports version 2.00.0001. There was no source code, no build script, and no protocol
+documentation in the package.
+
+That changes what "rebuild" means here. This is not a fork, a patch, or a copy of the original
+source. The new client was written independently: the university's public SOAP service and
+recordings page were used as published, and the Linktivity session protocol was reproduced from
+the outside so the vendor's servers see a normal student client. The old executable was used to
+observe behaviour and compare results, not as a source of code.
+
+## What the old client was
 
 The original client was a Visual Basic 6 desktop application from 2017. It was a shell around
 three external pieces:
@@ -15,41 +27,69 @@ three external pieces:
 - **The TrueSpeech ACM codec**, installed silently, for tutor voice.
 
 It worked in the sense that a student could sign in and join a lecture. It also carried every
-limitation of that stack: a discontinued IDE, a discontinued SOAP toolkit, an end-of-life Java
+constraint of that stack: a discontinued IDE, a discontinued SOAP toolkit, an end-of-life Java
 runtime, fixed Win32 controls, and a session engine that lived outside the application.
+
+The old client also had a host/tutor mode. A tutor could host a session, not only join one. The
+beta does not pretend that mode never existed; it blocks tutor and host accounts because the
+host controls, participant management, and tutor flow have not been rebuilt yet. That is a scope
+decision, not a claim about the old feature.
 
 The rebuild keeps the university's services and the Linktivity session protocol. It replaces the
 client around them.
 
 ## What failed, and why
 
-### 1. Starting a session was slow and opaque
+### 1. Joining a session took about 21 seconds
 
-**Symptom.** Joining a session added a noticeable delay. The window gave little or no feedback
-while it happened, so a slow join looked like a frozen app.
+**Symptom.** In a cold run on the same machine and the same session, the 2017 client took
+**20.9 seconds** from the Launch click to the meeting window appearing. The Java process appeared
+3.9 seconds after the click. In a separate cold start, the launcher's first window took 8.5
+seconds to appear after the executable started. There was no useful progress at any point, so a
+slow join looked like a frozen app.
 
-**Cause.** The launcher did not join the session itself. It started a bundled Java 6 runtime,
-loaded the WebDemo applet, and waited for the applet to initialize, authenticate, and connect.
-That is a cold JVM start plus class loading plus applet setup on every join. VB6 had no
-structured progress channel back from the applet, so the UI could not say what was happening.
+**Cause.** The launcher did not join the session itself. It unpacked a bundled Java 6 runtime
+(about 109.5 MB in `%TEMP%\SVU2014`), started a JVM, loaded the WebDemo applet, and waited for
+the applet to initialize, authenticate, and connect. That is a cold JVM start plus class loading
+plus applet setup on a cold join. VB6 had no structured progress channel back from the applet,
+so the UI could not say what was happening.
+
+**Why it mattered.** The delay landed at the start of a lecture. Students joined late, clicked
+Launch again because they thought the first click had failed, or gave up and watched the
+recording later. A 20-second opaque wait is long enough to change what people do.
 
 **Rebuild.** `LinktivitySessionLauncher` creates an in-process `LinktivitySessionConnection`
 directly. There is no JVM and no applet. `RetryingSessionConnection` reports each attempt to the
-chat page (`retrying`), and the page keeps a loader visible until `hello`. The slow path is now
-a network wait with a visible state, not an opaque runtime start.
+chat page (`retrying`), and the page keeps a loader visible until `hello`. In the latest run the
+new client completed the join in about **0.2 seconds**; an earlier join over a slower path took
+about **6–8 seconds**. The network still sets the floor, but the client no longer adds a runtime
+start to it.
 
-### 2. The window was fixed and did not fit modern screens
+The comparison is join to join. The old client's cold path includes unpacking its bundled
+runtime, which is the path on a first run or after a temp cleanup; the new client has no bundled
+runtime to unpack. A warm old join would skip the unpack but still start the JVM and applet.
 
-**Symptom.** The main window could not be resized. On high-DPI displays and small laptops it was
-either cramped or partly off-screen.
+### 2. The window was fixed, so small shares stayed small
+
+**Symptom.** The session list was a fixed 865×494 VB6 window, and the meeting opened in a
+separate 275×525 window. Neither could be resized. When a tutor shared a small window or a
+low-resolution slide, students could not enlarge it, and there was no zoom. On high-DPI laptops
+the fixed window was cramped or partly off-screen.
 
 **Cause.** The VB6 form used fixed pixel positions and a non-resizable border. The embedded
-applet assumed the same fixed area. There was no per-monitor DPI handling.
+applet assumed the same fixed area. There was no per-monitor DPI handling, and the applet had no
+zoom control.
+
+**Why it mattered.** The shared content is the lecture. If a tutor shared a small application
+window or a low-resolution slide, the student could not read it; the only workaround was to
+change the display resolution or move closer to the screen. This happened often enough to be a
+normal part of using the client, not an edge case.
 
 **Rebuild.** The studio is a normal resizable WPF window with `WindowResizer` handling every edge
 and corner. The web layout is fluid, and the shared column tracks keep the session table aligned
 at any width. `app.manifest` declares per-monitor DPI awareness. The viewer adds 1x, 2x, 3x, and
-Max zoom so a small screen can still show a readable share.
+Max zoom and can be enlarged independently of the chat, so a small share does not force the whole
+app to an unusable size.
 
 ### 3. Arabic was bolted on
 
@@ -60,25 +100,37 @@ systems showed locale warnings. English and Arabic did not feel like the same pr
 left-to-right positions, and the session applet had its own idea of direction. Translation was
 treated as replacing strings, not as designing a right-to-left layout.
 
+**Why it mattered.** The interface is where students read session names, tutor names, times, and
+errors. Clipped labels and reversed lines made ordinary tasks harder exactly when the student
+was already dealing with a problem.
+
 **Rebuild.** The UI is HTML/CSS with `dir="rtl"` as a first-class mode, the Cairo font for Arabic,
 and a shared font stack that keeps Latin data readable inside Arabic screens. `Loc` provides
 matched English/Arabic keys, live language switching, and Western digits for dates. The layout
 work is documented as a system (shared tracks, one start edge) rather than a one-off fix.
 
-### 4. Microphone and volume behaviour were unsafe
+### 4. The student microphone made the tutor harder to hear
 
-**Symptom.** The microphone was switched on by default when joining or starting a session. An
-open mic could echo, pick up room noise, or cut into the tutor's audio. Volume control was the
-Windows mixer, not the session.
+**Symptom.** The microphone was switched on by default when joining or starting a session. The
+student voice path did not work properly. When the mic opened it picked up room noise and echo,
+and that noise cut into the tutor's audio; the tutor became harder to follow. There was no
+push-to-talk, no moderator mute, and no speaking indicator. Volume control was the Windows
+mixer, not the session.
 
 **Cause.** The applet requested a capture device as part of its join, and the launcher exposed
-only a mic-mute checkbox. There was no per-session audio session to control.
+only a mic-mute checkbox. There was no per-session audio session on the client, and no
+push-to-talk, moderator mute, or speaking indicator in the join flow.
+
+**Why it mattered.** A feature that only adds noise is worse than no feature. Students could not
+reliably be heard anyway, and the open mic damaged the part that did work: the tutor's voice.
 
 **Rebuild.** The student client never opens a microphone. The status bar reports the mic as
 muted. Tutor audio is decoded by the x86 helper and played through `waveOut`; mute and a 0–300%
 volume slider act on the helper's own Core Audio session, so they affect only the tutor's audio
 and nothing else on the machine. `SendVoiceMuteAsync` remains for protocol completeness, not
-because the student sends capture audio.
+because the student sends capture audio. A proper student voice channel needs push-to-talk, a
+moderator mute, a speaking indicator, and server-side mixing, which requires university
+collaboration; it is deliberately deferred rather than half-shipped.
 
 ### 5. Saved credentials were weakly protected
 
@@ -88,6 +140,9 @@ encryption. Any process running as the same user could recover it.
 **Cause.** VB6 had no modern secret-storage API in use, and the original design treated
 obfuscation as protection.
 
+**Why it mattered.** Students reuse passwords, and a shared or infected machine made the
+exposure real. The stored value protected the university account, not just the launcher.
+
 **Rebuild.** `DpapiCredentialStore` encrypts the password with Windows DPAPI in current-user
 scope and app-specific entropy. The blob lives under `%LOCALAPPDATA%`, never in the repository.
 Settings store only the remembered username. The login view-model keeps the password in memory
@@ -96,10 +151,14 @@ for the authenticated session and never writes it to the log.
 ### 6. A dropped connection meant rejoining by hand
 
 **Symptom.** A network drop ended the session with little explanation. The student had to close
-everything and join again.
+everything and join again, paying the cold-join cost a second time. Errors were either raw
+transport text or nothing at all.
 
 **Cause.** The applet owned the connection and the launcher had no retry state machine. When the
 applet process or socket died, the launcher could only report failure.
+
+**Why it mattered.** A short Wi-Fi hiccup could cost the rest of a lecture. Students retried
+blindly or gave up, and support had little to work with.
 
 **Rebuild.** `RetryingSessionConnection` wraps the session in a bounded retry loop with a
 per-attempt timeout. The chat window stays open, the composer disables, and the status line says
@@ -108,11 +167,14 @@ with a Retry action. Closing the chat is the only thing that ends the session.
 
 ### 7. Errors were raw or missing
 
-**Symptom.** Failures produced either a technical message with no next step or no message at all.
-Support had little to work with.
+**Symptom.** Failures produced either a technical message with no next step or no message at
+all. A wrong password, a down server, and a local network problem looked the same.
 
 **Cause.** VB6 error handling and the SOAP toolkit surfaced transport faults directly. There was
 no mapping from fault to user action and no consistent log.
+
+**Why it mattered.** Students could not tell what to fix, so they retried blindly or gave up.
+Support could not reconstruct the failure after the fact.
 
 **Rebuild.** `WebDemoServiceException` carries a known key (`login.error.network`,
 `login.error.invalid`, `login.error.tutorBlocked`) or a generic service error. The UI shows the
@@ -128,27 +190,43 @@ the machine in ways the user did not choose.
 **Cause.** The stack was frozen in 2017 and never migrated. Each dependency was convenient at
 the time and became a liability later.
 
+**Why it mattered.** The runtime no longer received security updates, the install made silent
+system changes, and compatibility with modern Windows depended on a shrinking set of machines.
+The bundled runtime also made the cold join large and slow.
+
 **Rebuild.** The launcher targets .NET 10 and WebView2. There is no bundled Java and no silent
 install. The only remaining system dependency is the TrueSpeech codec, which is required to play
-the university's existing voice stream; the release notes state it instead of installing it
+the university's existing voice stream; the requirements state it instead of installing it
 silently.
 
-### 9. Recordings were not available in the app
+### 9. Recordings required a browser, a second sign-in, and a manual search
 
-**Symptom.** Students had to leave the launcher and use the university's recordings page in a
-browser.
+**Symptom.** To watch a recording, a student left the launcher, opened a browser, signed in to
+the university portal, and worked through the recordings page: term → programme → course → tutor
+→ class, then a result list. The old client had no recordings UI, so this was the only path.
 
-**Cause.** The original client never implemented the WebForms workflow.
+**Cause.** The original client never implemented the WebForms workflow behind the recordings
+page.
+
+**Why it mattered.** The task was common after a missed lecture, when motivation was lowest. A
+student had to remember where to go, sign in again, and repeat a five-step search; a wrong
+choice produced an empty list with no explanation.
 
 **Rebuild.** `SvuDownloadClient` and `DownloadsViewModel` drive the same public page: term →
 programme → course → tutor → class, then a selectable result list with per-row status, progress,
-cancellation, retry, and Range-resume downloads. Saved filters are restored on reopen.
+cancellation, retry, and Range-resume downloads. Saved filters are restored on reopen. No
+credentials are sent to the recordings page. The browser trip, the separate sign-in, and the
+manual search are gone.
 
 ### 10. The theme was fixed
 
 **Symptom.** One look, regardless of preference or lighting.
 
 **Cause.** VB6 forms used fixed colours and bitmaps.
+
+**Why it mattered.** This was the least serious of the failures, but it was part of the same
+fixed-control approach: the client could not adapt to the person using it. Long sessions in low
+light made the single bright theme tiring.
 
 **Rebuild.** `ThemeManager` provides light and dark themes, accent presets, a custom accent, and
 a matching header/ink choice. Changes apply live to open chat and viewer windows, not only to the
@@ -161,33 +239,53 @@ studio.
 - **The same session protocol.** Linktivity's join, roster, chat, voice, and viewport frames are
   reproduced field for field. The vendor's servers still see a normal student client.
 - **The same voice codec.** TrueSpeech is still required because that is what the service sends.
-  Moving to Opus needs the university's cooperation and is on the roadmap.
-- **Student-only scope.** Tutor and host accounts are blocked in this beta. The tutor experience
-  needs its own rebuild.
 
-## Trade-offs that remain
+## Inherited constraints
+
+These are properties of the university's services and the vendor protocol. They are not features
+the client chose to skip, and most cannot be fixed in the client alone.
 
 - **Linktivity is not TLS.** The vendor calls its handshake "SSL", but it is a fixed preamble and
   an optional CAST cipher that this client never enables. Session traffic is effectively
-  unencrypted. Fixing that requires a protocol change on the university side; the limitation is
+  unencrypted. Fixing that requires a protocol change on the university side; the constraint is
   documented in [security-privacy.md](security-privacy.md) rather than hidden.
 - **The recordings page is plain HTTP.** The page is public and unauthenticated, but a hostile
   network could observe or alter what is downloaded. The app does not send credentials there.
-- **TrueSpeech is old and 32-bit.** It is low quality and requires the x86 helper. The roadmap
-  proposes Opus if SVU can carry it.
-- **No notifications or private messaging.** These were out of scope for the beta.
+- **TrueSpeech is old and 32-bit.** It is low quality and requires the x86 helper. The service
+  sends it, so the client must decode it.
+
+## Deliberately deferred
+
+These are scope decisions for the beta. They are not limitations of the student flow and they
+are not claims that the old client never had the feature.
+
+- **The tutor and host side.** The old client could host or tutor a session. The host controls,
+  participant management, and tutor flow need their own rebuild; blocking those accounts is
+  better than shipping a half-working host mode.
+- **Student voice.** The old microphone path was unreliable and made the tutor harder to hear.
+  A proper channel needs push-to-talk, a moderator mute, a speaking indicator, and server-side
+  mixing, which requires university collaboration.
+- **Notifications.** Session starting, a new screen share, a finished download, and connection
+  problems should reach the user even when the launcher is in the background.
+- **Private messaging.** Room chat is included; one-to-one messages are not.
+- **A modern codec such as Opus.** TrueSpeech is the inherited constraint; changing the codec
+  needs the university's session service to carry it.
+- **Smaller friction reducers.** Opening the student account page from inside the app is one
+  example; it is not in this beta.
 
 ## Lessons carried into the codebase
 
-1. **Do not wrap a runtime you cannot control.** The applet was the source of most startup,
+1. **Measure the old client before replacing it.** The 21-second cold join was a stopwatch
+   result, not a feeling. It set the target and kept the comparison honest.
+2. **Do not wrap a runtime you cannot control.** The applet was the source of most startup,
    audio, and recovery problems. Speaking the protocol directly removed the layer.
-2. **Keep the protocol, replace the runtime.** The vendor wire format is compatibility surface;
+3. **Keep the protocol, replace the runtime.** The vendor wire format is compatibility surface;
    the JVM and VB6 were implementation choices.
-3. **Make failure visible.** A retry with a status line is better than a silent hang or a raw
+4. **Make failure visible.** A retry with a status line is better than a silent hang or a raw
    fault.
-4. **Treat credentials as a platform feature.** Use DPAPI; never invent obfuscation.
-5. **Design right-to-left, do not translate into it.** Shared tracks and one start edge are
+5. **Treat credentials as a platform feature.** Use DPAPI; never invent obfuscation.
+6. **Design right-to-left, do not translate into it.** Shared tracks and one start edge are
    structural, not cosmetic.
-6. **Do not install system components silently.** State the dependency and let the user decide.
-7. **Delete what you replace.** Dead applet, SOAP, and mic-mute paths were removed rather than
-   left behind behind flags.
+7. **Do not install system components silently.** State the dependency and let the user decide.
+8. **Delete what you replace.** Dead applet, SOAP, and mic-mute paths were removed rather than
+   kept behind flags.
