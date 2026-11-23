@@ -1,30 +1,31 @@
 # SVU Sessions Launcher
 
-**Beta 3.0.0-beta.1** - a student-only desktop launcher for Syrian Virtual University online sessions.
+**Beta 3.0.0-beta.1** — a student-only desktop client for Syrian Virtual University online
+sessions.
 
-This is an unofficial, open-source project. It gives SVU students one Windows app for the
-session workflow: sign in, browse programmes and courses, join live sessions, use room chat
-and screen sharing, and download recordings. It exists to make those everyday tasks quicker
-and less fragmented than moving between browser pages, and to keep the experience consistent
-in English and Arabic.
+This is an unofficial, open-source project. It replaces the 2017 launcher with a .NET 10 and
+WebView2 app: sign in, browse programmes and sessions, join the live room, use chat and tutor
+screen sharing, and download recordings, in English or Arabic. The university's services and the
+Linktivity session protocol are unchanged; the client around them is new.
 
 > **Beta software.** The main flows work, but features may change and bugs are expected.
 > Feedback, bug reports, and suggestions are welcome on
-> [GitHub Issues](https://github.com/qusielh/svu-sessions-launcher/issues). If the project
-> is useful to you, please star the repository.
+> [GitHub Issues](https://github.com/qusielh/svu-sessions-launcher/issues). If the project is
+> useful to you, please star the repository.
 
 ## Download
 
 The latest beta build is on the [Releases](https://github.com/qusielh/svu-sessions-launcher/releases)
-page. See [Requirements](#requirements) for the runtimes it needs.
+page. The asset is `SVU-Sessions-Launcher-3.0.0-beta.1-win-x64.zip`; the release page lists its
+SHA256. See [Requirements](#requirements) for the runtimes it needs.
 
 ## Documentation
 
 - [Architecture](docs/architecture.md) - process model, startup, windows, services, and the
   session stack.
 - [Code map](docs/code-map.md) - every folder and file, plus a reviewer's reading route.
-- [Legacy launcher](docs/legacy-launcher.md) - what failed in 2017, why, and how this rebuild
-  solved it.
+- [Legacy launcher](docs/legacy-launcher.md) - the 2017 failures, causes, and measured
+  comparison.
 - [Security and privacy](docs/security-privacy.md) - credentials, local data, logging, and
   transport limits.
 - [Release workflow](docs/release-workflow.md) - versioning, packaging, publishing, and patches.
@@ -43,89 +44,180 @@ screenshots show the current 3.0.0 beta.
 
 ## Why the launcher was rebuilt
 
-The original launcher was written in 2017 on VB6, the discontinued Microsoft SOAP Toolkit,
-and a bundled Java 6 runtime. It worked, but it carried the limitations of that stack. This
-version keeps the same university services and session engine while replacing the client
-around them. The full account of what failed, the cause of each failure, and how this rebuild
-addresses each one is in [docs/legacy-launcher.md](docs/legacy-launcher.md).
+The rebuild started from a compiled 2017 client and its installer. There was no source code, no
+build script, and no protocol documentation in the package. The new client is an independent
+implementation around the same university services and session protocol; it is not a fork and
+does not reuse the old source.
 
-| | Old launcher (2017) | 3.0.0 beta |
-| --- | --- | --- |
-| Starting a session | Added a noticeable delay: VB6 started a bundled Java 6 runtime and a WebDemo applet, with no progress while it loaded. | Connects to the room directly and reports each step. |
-| Arabic | Bolted onto fixed VB6 controls: clipped text, garbled messages, and locale warnings on some systems. | Full right-to-left layout with the Cairo font, live language switching, and matching English/Arabic text. |
-| Window size | Fixed; resizing was disabled. | Resizable main window and viewer, with 1x, 2x, 3x, and Max zoom. |
-| Volume | Only the Windows mixer, through a mic-mute checkbox. | Per-session audio with mute and a 0-300% volume slider. |
-| Microphone | Switched on by default when joining or starting a session, so an open mic could echo or cut into the tutor's audio. | Muted automatically. The student client never transmits microphone audio, and the status bar reports it muted. |
-| Software | VB6, SOAP Toolkit 3.0, Java 6u45 (2013, end of life), a bundled JRE, and a silent system codec install. | .NET 10 and WebView2, with no bundled Java and no silent system installs. |
-| Saved credentials | Registry values with weak obfuscation. | Windows DPAPI, current-user scope. |
-| Connection loss | No launcher-level recovery; a drop meant rejoining by hand. | Automatic reconnect with a retry budget, offline waiting, and chat kept open. |
-| Errors | Raw or missing feedback. | Friendly messages with Retry actions; technical details stay in the log. |
-| Theme | Fixed. | Light and dark themes, accent presets, and live re-theming of open windows. |
-| Recordings | Not available. | An in-app recording browser with filters, a download queue, progress, and Retry. |
+The old client worked, but several everyday tasks were slower or harder than they needed to be.
+Each section below describes what students saw, why it happened, why it mattered, and what this
+beta does instead. The full technical account is in
+[docs/legacy-launcher.md](docs/legacy-launcher.md).
 
-### Other fixes in this beta
+### A join took about 21 seconds
 
-- Student microphones are muted automatically. The student client never sends microphone
-  audio, so an open mic cannot echo or interrupt the tutor during a lecture.
-- Chat stays open through a network drop. The composer disables, the room stays visible, and
-  the status line shows "Reconnecting..." instead of failing silently.
-- The screen-share viewer keeps its size, supports 2x and 3x even on small screens, and hides
-  cleanly when a share ends.
-- Maximize, restore, and minimize use one quick dissolve instead of a slow geometry animation,
-  so the page and screen share never stutter. Every window edge and corner resizes.
-- Downloads show a clear state for every row (Queued, Done, Failed, Cancelled) and can retry
-  the exact filter step that failed.
-- Theme and accent changes apply immediately to open chat and viewer windows, even when they
-  are in the background.
-- The session list has proper loading, empty, no-results, and error states, with Retry where
-  it makes sense.
-- Closing a window that is already closing no longer raises an unobserved exception, and
-  failed async commands are logged instead of disappearing.
-- English and Arabic stay in parity, and Arabic month names render with Western digits.
+In a cold run on the same machine and the same session, the 2017 client took **20.9 seconds**
+from the Launch click to the meeting window appearing. The Java process appeared 3.9 seconds
+after the click, and there was no useful progress in between. In a separate cold start, the
+launcher's first window took 8.5 seconds to appear after the executable started; the join figure
+is measured from the Launch click once the app was already open.
 
-## Features
+The cause was the architecture, not the network. The old client did not join the session itself.
+It unpacked and started a bundled Java 6 runtime, loaded a WebDemo applet, and waited for the
+applet to initialize, authenticate, and connect. That is a cold JVM start, class loading, and
+applet setup on a cold join. VB6 had no structured progress channel back from the applet, so the
+window could not say what was happening.
 
-- Sign in with an SVU student account.
-- Browse programmes, courses, and sessions.
-- Join a student session with the built-in Linktivity client.
-- Use room chat and tutor screen sharing.
-- Download session recordings.
-- Switch between English and Arabic, light and dark themes.
+The delay mattered at the start of a lecture. Students joined late, clicked Launch again because
+they thought the first click had failed, or gave up and watched the recording later. A
+20-second opaque wait is long enough to change what people do.
 
-Tutor and host accounts are intentionally blocked in this version. Notifications and private
-messaging are not included yet.
+The new client speaks the Linktivity protocol in-process. There is no JVM and no applet. In the
+latest run it completed the join in about **0.2 seconds**; an earlier join over a slower path
+took about **6–8 seconds**. The network still sets the floor, but the client no longer adds a
+runtime start to it. The chat window opens immediately with a loader, and each retry is visible.
 
-## Beta limitations
+The comparison is join to join: the old client's cold path includes unpacking its bundled
+runtime, which is the path on a first run or after a temp cleanup; the new client has no bundled
+runtime to unpack. A warm old join would skip the unpack but still start the JVM and applet.
 
-- This is a student client. The tutor side still needs to be rebuilt before tutor accounts can
-  be supported.
-- Student microphones are muted by design; there is no student voice channel in this beta.
-- Tutor voice still uses the university's TrueSpeech stream, so the TrueSpeech ACM codec is
-  required for playback.
-- There is no notification system and no private messaging.
-- Bugs are expected. Please include the log file and the steps that led to the problem when
-  you report one.
+### The window could not be resized, and small shares stayed small
 
-## Roadmap
+The session list was a fixed 865×494 VB6 window, and the meeting opened in a separate 275×525
+window. Neither could be resized. When a tutor shared a small window or a low-resolution slide,
+students could not enlarge it, and there was no zoom. This happened often enough to be a normal
+part of using the client, not an edge case.
 
-The next improvements depend partly on the university. If SVU is willing to collaborate, some
-of these can become official integrations; if not, the project will keep improving them
-independently.
+The cause was fixed pixel layout. The VB6 form used a non-resizable border, the embedded applet
+assumed the same fixed area, and there was no per-monitor DPI handling. The applet had no zoom
+control, so the only workaround was to change the display resolution or move closer to the
+screen.
 
-- **Move from TrueSpeech to a modern codec such as Opus.** TrueSpeech is old, low quality, and
-  only available as a 32-bit Windows codec. Opus would be clearer, smaller, and easier to
-  support on modern systems. This needs the university's session service to carry the codec.
-- **Rebuild the tutor side.** The student flow is the focus of this beta. A proper tutor
-  experience needs host controls, participant management, and the same reliability work.
-- **Bring back student voice properly.** Student microphones stay muted for now so nobody can
-  echo or cut into the tutor's audio. With SVU's collaboration, voice could return with
-  push-to-talk, a moderator mute, and a clear speaking indicator instead of an always-on mic.
-- **Add a real notification system.** Session starting, a new screen share, a finished
-  download, and connection problems should reach the user even when the launcher is in the
-  background.
-- **Work with the university, or continue independently.** The launcher is unofficial and not
-  endorsed by SVU. Collaboration would make codec and notification changes much easier, but
-  the project can continue on its own if that is not possible.
+The shared content is the lecture. If a student cannot read a shared slide or a small
+application window, the session has failed at the point that matters. On high-DPI laptops the
+fixed window was also cramped or partly off-screen.
+
+The beta uses resizable WPF windows with edge and corner resizing, per-monitor DPI awareness, and
+a fluid web layout. The screen-share viewer has 1x, 2x, 3x, and Max zoom and can be enlarged
+independently of the chat, so a small share does not force the whole app to an unusable size.
+
+### The student microphone made the tutor harder to hear
+
+The old client switched the microphone on by default when joining or starting a session. The
+student voice path did not work properly. When the mic opened it picked up room noise and echo,
+and that noise cut into the tutor's audio; the tutor became harder to follow. There was no
+push-to-talk, no moderator mute, and no speaking indicator. Volume control was the Windows
+mixer, not the session.
+
+The cause was that the applet requested a capture device as part of its join, and the launcher
+exposed only a mic-mute checkbox. There was no per-session audio session on the client, and no
+push-to-talk, moderator mute, or speaking indicator in the join flow.
+
+A feature that only adds noise is worse than no feature. Students could not reliably be heard
+anyway, and the open mic damaged the part that did work: the tutor's voice.
+
+This beta never opens a microphone. The status bar reports it muted. Tutor audio is decoded by
+the x86 helper and played through `waveOut`; mute and a 0–300% volume slider apply only to that
+helper's audio session. A proper student voice channel needs push-to-talk, a moderator mute, a
+speaking indicator, and server-side mixing, which requires university collaboration; it is
+deliberately deferred rather than half-shipped.
+
+### Recordings required a browser, a second sign-in, and a manual search
+
+To watch a recording, a student left the launcher, opened a browser, signed in to the university
+portal, and worked through the recordings page: term, programme, course, tutor, class, then a
+result list. The old client had no recordings UI, so this was the only path.
+
+The cause was scope: the original client never implemented the WebForms workflow behind the
+recordings page.
+
+The friction was easy to underestimate because it happened after the lecture, when motivation
+was lowest. A missed session meant remembering where to go, signing in again, and repeating a
+five-step search; a wrong choice produced an empty list with no explanation.
+
+The beta brings the same public recordings page into the app. It keeps the page's cookies and
+hidden fields, drives the cascade, and shows a result list with per-row status, progress,
+cancellation, retry, and Range-resume downloads. Saved filters are restored on reopen. No
+credentials are sent to the recordings page.
+
+### Arabic was bolted on
+
+Arabic text clipped, mixed-direction lines rendered in the wrong order, and some systems showed
+locale warnings. English and Arabic did not feel like the same product.
+
+VB6 controls have weak Unicode and bidi support. The layout was built from fixed left-to-right
+positions, and the session applet had its own idea of direction. Translation was treated as
+replacing strings, not as designing a right-to-left layout.
+
+The interface is where students read session names, tutor names, times, and errors. Clipped
+labels and reversed lines made ordinary tasks harder exactly when the student was already
+dealing with a problem.
+
+The beta uses HTML/CSS with `dir="rtl"` as a first-class mode, the Cairo font for Arabic, and a
+shared font stack that keeps Latin data readable inside Arabic screens. English and Arabic use
+matched keys and can switch live; dates use Western digits. Shared column tracks keep the
+session table aligned in both directions.
+
+### A dropped connection meant starting over
+
+A network drop ended the session with little explanation, and the student had to close
+everything and join again, paying the cold-join cost a second time. Errors were either raw
+transport text or nothing at all, so a wrong password, a down server, and a local network
+problem looked the same.
+
+The applet owned the connection and the launcher had no retry state machine. VB6 error handling
+surfaced SOAP faults directly, with no mapping from fault to user action and no consistent log.
+
+A short Wi-Fi hiccup could cost the rest of a lecture. Students retried blindly or gave up, and
+support had little to work with.
+
+The beta keeps the chat window open through a drop, disables the composer, and shows
+"Reconnecting..." while a bounded retry loop runs. If all attempts fail, the page gets a Retry
+action. Service faults become friendly messages with a known key; technical detail goes to a
+sanitized log. The same pattern covers session and download failures.
+
+### Saved passwords were obfuscated, not encrypted
+
+"Remember password" stored the secret in the registry with obfuscation. Any process running as
+the same Windows user could recover it. VB6 had no modern secret-storage API in use, and the
+design treated obfuscation as protection.
+
+Students reuse passwords, and a shared or infected machine made the exposure real. The beta
+encrypts the optional saved password with Windows DPAPI in current-user scope and app-specific
+entropy, stores it under `%LOCALAPPDATA%`, keeps only the username in settings, and never writes
+the password to the log.
+
+## Not in this beta
+
+These are deliberate choices for this beta, not missing pieces of the student flow.
+
+- **Tutor and host mode.** The 2017 client could host or tutor a session as well as join one.
+  This beta blocks tutor and host accounts on purpose: the host controls, participant
+  management, and tutor flow need their own rebuild. Pretending the feature never existed would
+  be inaccurate; shipping a half-working host mode would be worse.
+- **Student voice.** Deferred; the microphone stays muted until a proper channel can be built
+  with the university.
+- **Notifications.** Session start, a new screen share, a finished download, and connection
+  problems should reach the student when the launcher is in the background. Not included yet.
+- **Private messaging.** Room chat is included; one-to-one messages are not.
+- **A modern codec.** Tutor voice still uses the university's TrueSpeech stream. Moving to Opus
+  needs the session service to carry it; it is not a client-only change.
+- **Account shortcut.** Opening the student account page from inside the app is a small friction
+  reducer that is not in this beta.
+
+## Constraints that come from the university
+
+These are not missing features in the client. They are properties of the services the client
+must use.
+
+- **Linktivity is not TLS.** The vendor calls its handshake "SSL", but it is a fixed preamble and
+  an optional CAST cipher that this client never enables. Session traffic is effectively
+  unencrypted. Fixing it requires a protocol change on the university side.
+- **The recordings page is plain HTTP.** It is the only published interface. The page is public
+  and the client sends no credentials, but a hostile network could observe or alter a download.
+- **Tutor voice is TrueSpeech.** The service sends DSP Group TrueSpeech, a 32-bit Windows codec.
+  The x86 helper decodes it. The codec is listed in [Requirements](#requirements) instead of
+  being installed silently.
 
 ## Requirements
 
@@ -196,15 +288,10 @@ order.
 - WebView2 DevTools and default context menus are disabled in the sign-in, studio, and chat
   surfaces. The studio only navigates to local `file:` pages; the chat opens validated
   `http`/`https` links in the default browser.
-- The recording archive client uses the university's public page and does not send
-  credentials there. That page is served over plain HTTP.
-- Linktivity session traffic uses the vendor's fixed handshake, not TLS. The optional CAST cipher
-  is never enabled. This is a limitation of the university's session service; it is documented
-  in [docs/security-privacy.md](docs/security-privacy.md) rather than hidden.
-- Student microphones are never opened or transmitted. Tutor audio is decoded by the x86 helper;
-  mute and volume apply only to that helper's audio session.
+- There is no telemetry, update checker, or background service. The only outbound traffic is
+  what a user action requires.
 
-Full data-flow, threat-model, and verification details are in
+The transport constraints above and the full data-flow and threat model are in
 [docs/security-privacy.md](docs/security-privacy.md).
 
 ## Credits
