@@ -53,6 +53,8 @@ Run this before touching the version:
       needed.
 - [ ] Screenshots still show the current UI. Recapture from the real app if the visible layout
       changed; blur tutor names; keep the username visible if it helps the demo.
+- [ ] Any timing claim names the action measured and the conditions, and comes from a recorded
+      run. Compare join to join, not app startup to join.
 
 ## Step 1 — Make the change
 
@@ -69,11 +71,12 @@ Every user-visible change needs a documentation pass:
 
 | Change | Update |
 | --- | --- |
-| New/changed screen or flow | `README.md` features/limitations, `docs/architecture.md` flow, screenshots if visible |
+| New/changed screen or flow | `README.md` scope and deferred work, `docs/architecture.md` flow, screenshots if visible |
 | New/changed service or file | `docs/code-map.md` |
 | Credential, logging, or transport change | `docs/security-privacy.md` |
 | Version or packaging change | this file and `README.md` |
-| Removed feature | README limitations/roadmap, architecture, code map |
+| Removed feature | README "Not in this beta", architecture, code map |
+| Deferred feature | README "Not in this beta", release notes |
 
 If the change alters a design decision (for example, a new retry policy), record the reason in
 the relevant doc, not only in the commit message.
@@ -171,11 +174,15 @@ Beta software. The main flows work; bugs are expected.
 ### Security and privacy
 - ...
 
-### Known limitations
+### Inherited constraints
 - Linktivity session traffic is not TLS; this is a vendor protocol limitation.
 - The recordings page is served over plain HTTP.
 - Tutor voice requires the TrueSpeech ACM codec.
-- Tutor and host accounts are blocked in this beta.
+
+### Not in this beta
+- Tutor and host mode; the 2017 client had it, the host flow needs a rebuild.
+- Student voice; muted until a proper channel can be built with the university.
+- Notifications and private messaging.
 
 ### Requirements
 - Windows 10/11 x64
@@ -252,7 +259,10 @@ is the source for `gh release create --notes-file`, and it stays in the reposito
 ## Security and privacy
 - ...
 
-## Known limitations
+## Inherited constraints
+- ...
+
+## Not in this beta
 - ...
 
 ## Requirements
@@ -271,6 +281,10 @@ is the source for `gh release create --notes-file`, and it stays in the reposito
   `bin/`, `obj/`, or `dist/`.
 - Do not fake screenshots or edit the UI in an image editor. Capture the real app, blur only
   what must be blurred, and keep the caption honest.
+- Do not call a deliberately deferred feature a limitation. Limitations are constraints inherited
+  from the university or vendor; deferred work is a scope decision.
+- Do not publish a timing claim without the measured action and conditions. Compare join to join,
+  not app startup to join.
 - Do not describe a transport as encrypted when it is the vendor's fixed handshake. State the
   limitation.
 - Do not leave the launcher running after a test session; close it and confirm no GUI windows

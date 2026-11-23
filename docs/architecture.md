@@ -23,8 +23,9 @@ The launcher is deliberately small at the process level:
   as a 32-bit ACM codec, so the 64-bit launcher cannot decode tutor audio in-process. The helper
   decodes and plays that one stream. It never opens a capture device.
 - **No bundled Java, no vendor applet, no child browser.** The old client started a Java 6
-  runtime and a WebDemo applet to join a session. This build speaks the same Linktivity protocol
-  directly from C#.
+  runtime and a WebDemo applet to join a session; a measured cold join took about 21 seconds from
+  the Launch click to the meeting window. This build speaks the same Linktivity protocol directly
+  from C#, so the join is a network operation rather than a runtime start.
 
 The result is three process types at most: the launcher, WebView2's browser/renderer processes
 (managed by the WebView2 runtime), and the optional voice helper.
@@ -59,7 +60,9 @@ taskbar restore target the long-gone sign-in window.
 The page posts `username`, `password`, `savePassword`, `autoSignIn`, `showPassword`, `signIn`,
 and `language` actions; the window posts the current state back. The view-model calls
 `IWebDemoService.CheckUserPasswordAsync`, then `IsUserTrainerAsync`. Tutor and host accounts are
-rejected on purpose: this is a student client.
+rejected on purpose: this is a student client. The 2017 client had a host/tutor mode; the beta
+blocks those accounts because the host flow has not been rebuilt, not because the feature never
+existed.
 
 On success the view-model stores the username in settings, stores the password only through
 `ICredentialStore` when "remember" or auto sign-in is on, and raises `SignedIn`. `App` closes the
@@ -195,9 +198,13 @@ playback through `VoicePlayback`, which launches and feeds the x86 helper.
 
 The tutor voice stream is DSP Group TrueSpeech. The helper extracts each 256-byte payload,
 decodes it with the OS ACM codec, and plays it through `waveOut`. Mute and volume are applied to
-the helper's own Core Audio session, so they affect only the tutor's audio. The launcher never
-opens a microphone; the status bar says so, and `SendVoiceMuteAsync` exists for protocol
-completeness rather than student capture.
+the helper's own Core Audio session, so they affect only the tutor's audio.
+
+The launcher never opens a microphone. The 2017 client opened a capture device on join, and in
+practice the student mic path was unreliable: it added room noise and echo that made the tutor
+harder to hear. A proper student voice channel needs server-side roles and mixing, which requires
+university collaboration, so it is deferred. The status bar says the microphone is muted, and
+`SendVoiceMuteAsync` exists for protocol completeness rather than student capture.
 
 ## Window behaviour
 

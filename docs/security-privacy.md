@@ -127,6 +127,10 @@ from being throttled. It does not open a remote-debugging port.
 
 ## Network and transport limits
 
+These are properties of the university's services and the vendor protocol, not client features
+that were skipped. Where the client can protect the user without breaking interoperability, it
+does; where it cannot, the constraint is stated here.
+
 ### WebDemo SOAP: HTTPS
 
 The live endpoint is HTTPS and the client validates the certificate through the platform HTTP
@@ -171,6 +175,12 @@ the page. The SOAP endpoint is configurable in `settings.json` for development; 
 should leave it at the default.
 
 ## Microphone and audio privacy
+
+The 2017 client opened a capture device as part of its join. The student mic path did not work
+properly: when it opened, it picked up room noise and echo and made the tutor harder to hear.
+This beta does not open a capture device. A proper student voice channel needs push-to-talk, a
+moderator mute, a speaking indicator, and server-side mixing, which requires university
+collaboration; it is deliberately deferred.
 
 - The launcher never opens a capture device.
 - The student client never transmits microphone audio.
