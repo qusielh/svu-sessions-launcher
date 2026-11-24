@@ -39,8 +39,17 @@ SHA256. See [Requirements](#requirements) for the runtimes it needs.
 | --- | --- |
 | ![SVU Sessions Launcher, English](docs/images/new-launcher-en.png) | ![مشغل الجلسات المتزامنة، العربية](docs/images/new-launcher-ar.png) |
 
-Tutor names are blurred in all screenshots. The old screenshot is the 2017 VB6 client; the new
-screenshots show the current 3.0.0 beta.
+Tutor names are blurred in the launcher screenshots. The old screenshots are the 2017 VB6
+client; the new ones show the current 3.0.0 beta.
+
+### Room chat, old and new
+
+![The 2017 room chat and the 3.0.0 beta room chat side by side](docs/images/chat-compare.png)
+
+The old chat applet was locked to its own small window, with a cramped transcript and no
+scaling. The beta keeps the same room protocol and history, but gives the chat a clean RTL
+layout, readable message grouping and timestamps, and a window that resizes with the rest of the
+app. Student usernames and avatar initials are blurred in both chat screenshots.
 
 ## Why the launcher was rebuilt
 
