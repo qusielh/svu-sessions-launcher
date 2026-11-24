@@ -16,8 +16,16 @@ Linktivity session protocol are unchanged; the client around them is new.
 ## Download
 
 The latest beta build is on the [Releases](https://github.com/qusielh/svu-sessions-launcher/releases)
-page. The asset is `SVU-Sessions-Launcher-3.0.0-beta.1-win-x64.zip`; the release page lists its
-SHA256. See [Requirements](#requirements) for the runtimes it needs.
+page. Choose either asset:
+
+- `SVU-Sessions-Launcher-3.0.0-beta.1-win-x64-setup.exe` - recommended. Installs per user,
+  creates Start Menu shortcuts, and includes an uninstaller.
+- `SVU-Sessions-Launcher-3.0.0-beta.1-win-x64.zip` - portable. Extract it and run
+  `SvuSessionsLauncher.exe`.
+
+The release page lists the SHA256 for both. The installer checks the .NET 10 Desktop Runtime
+(x64) and WebView2 before installing; tutor voice also needs the .NET 10 Runtime (x86) and the
+TrueSpeech codec. See [Requirements](#requirements).
 
 ## Documentation
 
@@ -256,10 +264,12 @@ src\SvuSessionsLauncher\bin\Release\net10.0-windows\
 ## Package a release
 
 ```powershell
-.\build-release.ps1
+.\build-installer.ps1
 ```
 
-This writes `dist\SVU-Sessions-Launcher-<version>-win-x64.zip` and prints its SHA256.
+This writes the portable zip, the setup installer, and `SHA256SUMS.txt` to `dist\`. Building the
+installer requires [Inno Setup 6](https://jrsoftware.org/isdl.php). Use `.\build-release.ps1` if
+you only need the portable zip.
 
 ## Run
 
@@ -282,6 +292,9 @@ src\SvuSessionsLauncher\        WPF host (.NET 10, x64)
   ViewModels\                   studio, sign-in, and downloads state
   Views\                        WPF window hosts for login, studio, chat, viewer
 src\SvuVoiceHelper\             32-bit TrueSpeech decode/playback helper
+installer\                      Inno Setup script and pre-install notes
+build-release.ps1               portable zip packaging
+build-installer.ps1             zip + Inno Setup installer
 docs\                           architecture, code map, legacy history, security, releases, images
 ```
 

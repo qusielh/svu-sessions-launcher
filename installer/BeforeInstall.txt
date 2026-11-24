@@ -1,0 +1,20 @@
+SVU Sessions Launcher 3.0.0-beta.1
+
+An unofficial, open-source student client for Syrian Virtual University online sessions. It replaces the 2017 launcher while keeping the university's services and the Linktivity session protocol.
+
+This installer places the app in your user profile. It does not require administrator rights and does not install runtimes silently.
+
+Requirements
+------------
+- Windows 10 or 11 (64-bit)
+- .NET 10 Desktop Runtime (x64)
+- Microsoft Edge WebView2 Runtime
+- .NET 10 Runtime (x86) for tutor voice playback
+- TrueSpeech ACM codec for tutor voice playback
+
+Student accounts only. Tutor and host accounts are blocked in this beta.
+
+The launcher is not code-signed, so Windows SmartScreen may warn on first run.
+
+Beta software: the main flows work, but bugs are expected.
+Report issues at https://github.com/qusielh/svu-sessions-launcher/issues

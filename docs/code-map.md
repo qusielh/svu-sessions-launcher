@@ -23,10 +23,13 @@ If you have limited time, read in this order:
 
 | Path | Purpose |
 | --- | --- |
-| `README.md` | User-facing overview, screenshots, requirements, build and release commands. |
+| `README.md` | User-facing overview, screenshots, requirements, build, installer, and release commands. |
 | `LICENSE` | MIT licence, copyright Qusie. |
 | `SvuSessionsLauncher.slnx` | Solution file; contains the launcher and the voice helper. |
-| `build-release.ps1` | Publishes the framework-dependent x64 build, trims it, writes `README.txt`, zips it, and prints SHA256. |
+| `build-release.ps1` | Publishes the framework-dependent x64 build, trims it, writes `README.txt`, zips it, and writes `SHA256SUMS.txt`. |
+| `build-installer.ps1` | Runs the release build, then compiles the Inno Setup installer and writes both hashes. |
+| `installer/SvuSessionsLauncher.iss` | Per-user installer definition: shortcuts, uninstaller, runtime checks, and install flow. |
+| `installer/BeforeInstall.txt` | Requirements and beta notes shown before installation. |
 | `.gitignore` | Excludes build output, local state, logs, captures, and release artifacts. |
 | `docs/` | Architecture, code map, legacy history, security, release workflow, window transitions, screenshots. |
 | `src/SvuSessionsLauncher/` | The WPF launcher. |

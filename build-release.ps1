@@ -3,7 +3,8 @@
 [CmdletBinding()]
 param(
     [string] $Configuration = 'Release',
-    [string] $OutputDir = (Join-Path $PSScriptRoot 'dist')
+    [string] $OutputDir = (Join-Path $PSScriptRoot 'dist'),
+    [string] $StageDir
 )
 
 $ErrorActionPreference = 'Stop'
@@ -17,7 +18,16 @@ if (-not $version) {
     throw 'Could not read <Version> from the launcher project.'
 }
 
-$stage = Join-Path ([System.IO.Path]::GetTempPath()) ('svu-release-' + [guid]::NewGuid().ToString('N'))
+$keepStage = -not [string]::IsNullOrWhiteSpace($StageDir)
+if (-not $keepStage) {
+    $StageDir = Join-Path ([System.IO.Path]::GetTempPath()) ('svu-release-' + [guid]::NewGuid().ToString('N'))
+}
+
+$stage = $StageDir
+if (Test-Path $stage) {
+    Remove-Item $stage -Recurse -Force
+}
+
 $app = Join-Path $stage 'app'
 New-Item -ItemType Directory -Path $app -Force | Out-Null
 
@@ -83,9 +93,18 @@ Notes
     Compress-Archive -Path (Join-Path $app '*') -DestinationPath $zip -CompressionLevel Optimal
 
     $hash = (Get-FileHash $zip -Algorithm SHA256).Hash
+    $sums = Join-Path $OutputDir 'SHA256SUMS.txt'
+    "SHA256  $hash  $([System.IO.Path]::GetFileName($zip))" |
+        Set-Content -Path $sums -Encoding ASCII
+
     Write-Host "Created $zip"
     Write-Host "SHA256  $hash"
+    if ($keepStage) {
+        Write-Host "Staged app: $app"
+    }
 }
 finally {
-    Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
+    if (-not $keepStage) {
+        Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
+    }
 }
