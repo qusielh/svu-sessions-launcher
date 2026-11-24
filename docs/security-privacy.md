@@ -176,11 +176,13 @@ should leave it at the default.
 
 ## Microphone and audio privacy
 
-The 2017 client opened a capture device as part of its join. The student mic path did not work
-properly: when it opened, it picked up room noise and echo and made the tutor harder to hear.
-This beta does not open a capture device. A proper student voice channel needs push-to-talk, a
-moderator mute, a speaking indicator, and server-side mixing, which requires university
-collaboration; it is deliberately deferred.
+The 2017 client had student mute and tutor force-mute, but starting a broadcast switched every
+student microphone on by default. Tutors had to re-mute students constantly, and the student
+audio path itself stuttered and produced noise that turned the tutor's voice into gibberish for
+every student in the room. Mid-session joins and rejoins triggered it; it was not room echo.
+
+This beta does not open a capture device. The full mute is temporary: student audio stays off
+until audio transfer and sharing are split and the university's backend behavior is understood.
 
 - The launcher never opens a capture device.
 - The student client never transmits microphone audio.

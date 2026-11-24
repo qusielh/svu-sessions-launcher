@@ -69,27 +69,26 @@ The comparison is join to join. The old client's cold path includes unpacking it
 runtime, which is the path on a first run or after a temp cleanup; the new client has no bundled
 runtime to unpack. A warm old join would skip the unpack but still start the JVM and applet.
 
-### 2. The window was fixed, so small shares stayed small
+### 2. The window was locked, and the viewer could not scale
 
-**Symptom.** The session list was a fixed 865×494 VB6 window, and the meeting opened in a
-separate 275×525 window. Neither could be resized. When a tutor shared a small window or a
-low-resolution slide, students could not enlarge it, and there was no zoom. On high-DPI laptops
-the fixed window was cramped or partly off-screen.
+**Symptom.** The main window was fixed, the chat applet was fixed, and the screen-share viewer
+was locked to the broadcast's dimensions and resolution. None of them could be resized, and the
+viewer could not upscale or downscale the shared content. A tutor who shared a small window or a
+low-resolution slide left students with no way to make it readable.
 
-**Cause.** The VB6 form used fixed pixel positions and a non-resizable border. The embedded
-applet assumed the same fixed area. There was no per-monitor DPI handling, and the applet had no
-zoom control.
+**Cause.** The old client used fixed pixel layouts and non-resizable windows. The embedded
+applet assumed the same fixed area, and the viewer had no zoom or scale control, so it stayed at
+the broadcast's own size.
 
 **Why it mattered.** The shared content is the lecture. If a tutor shared a small application
-window or a low-resolution slide, the student could not read it; the only workaround was to
-change the display resolution or move closer to the screen. This happened often enough to be a
-normal part of using the client, not an edge case.
+window or a low-resolution slide, the student could not read it. This happened often enough to
+be a normal part of using the client, not an edge case.
 
 **Rebuild.** The studio is a normal resizable WPF window with `WindowResizer` handling every edge
 and corner. The web layout is fluid, and the shared column tracks keep the session table aligned
 at any width. `app.manifest` declares per-monitor DPI awareness. The viewer adds 1x, 2x, 3x, and
-Max zoom and can be enlarged independently of the chat, so a small share does not force the whole
-app to an unusable size.
+Max zoom and can be enlarged independently of the chat. The design goal is to let users
+comfortably resize and upscale the viewer rather than restricting it.
 
 ### 3. Arabic was bolted on
 
@@ -109,28 +108,32 @@ and a shared font stack that keeps Latin data readable inside Arabic screens. `L
 matched English/Arabic keys, live language switching, and Western digits for dates. The layout
 work is documented as a system (shared tracks, one start edge) rather than a one-off fix.
 
-### 4. The student microphone made the tutor harder to hear
+### 4. The student microphone broke the tutor's audio
 
-**Symptom.** The microphone was switched on by default when joining or starting a session. The
-student voice path did not work properly. When the mic opened it picked up room noise and echo,
-and that noise cut into the tutor's audio; the tutor became harder to follow. There was no
-push-to-talk, no moderator mute, and no speaking indicator. Volume control was the Windows
-mixer, not the session.
+**Symptom.** The old client had mute controls: students could mute themselves, and tutors could
+force-mute a student. The failure was around broadcasts. Starting a broadcast switched every
+student microphone on by default, so tutors had to re-mute students constantly and lost focus on
+the lecture. The student audio path was also broken: it stuttered and produced noise, and that
+noise turned the tutor's voice into gibberish for every student in the room. It was not room
+echo. Mid-session joins and rejoins triggered it, so one student arriving late could damage the
+audio for everyone.
 
-**Cause.** The applet requested a capture device as part of its join, and the launcher exposed
-only a mic-mute checkbox. There was no per-session audio session on the client, and no
-push-to-talk, moderator mute, or speaking indicator in the join flow.
+**Cause.** The applet owned the session, and the broadcast start reset the room's microphone
+state. The client exposed mute and force-mute, but not a way to keep microphones off when a
+broadcast began. The student audio path itself was unstable, and its failure corrupted the
+tutor's audio for the whole room.
 
-**Why it mattered.** A feature that only adds noise is worse than no feature. Students could not
-reliably be heard anyway, and the open mic damaged the part that did work: the tutor's voice.
+**Why it mattered.** Tutors spent the lecture policing mutes instead of teaching. A single late
+join or rejoin could make the tutor unintelligible for everyone, and the students who were
+trying to listen could not fix it.
 
-**Rebuild.** The student client never opens a microphone. The status bar reports the mic as
-muted. Tutor audio is decoded by the x86 helper and played through `waveOut`; mute and a 0–300%
-volume slider act on the helper's own Core Audio session, so they affect only the tutor's audio
-and nothing else on the machine. `SendVoiceMuteAsync` remains for protocol completeness, not
-because the student sends capture audio. A proper student voice channel needs push-to-talk, a
-moderator mute, a speaking indicator, and server-side mixing, which requires university
-collaboration; it is deliberately deferred rather than half-shipped.
+**Rebuild.** This beta keeps the microphone off by default and never opens a capture device. The
+status bar reports the mic as muted. Tutor audio is decoded by the x86 helper and played through
+`waveOut`; mute and a 0–300% volume slider act on the helper's own Core Audio session, so they
+affect only the tutor's audio and nothing else on the machine. The full mute is temporary:
+student audio stays off until audio transfer and sharing are split and the university's backend
+behavior is understood. `SendVoiceMuteAsync` remains for protocol completeness, not because the
+student sends capture audio.
 
 ### 5. Saved credentials were weakly protected
 
@@ -262,9 +265,8 @@ are not claims that the old client never had the feature.
 - **The tutor and host side.** The old client could host or tutor a session. The host controls,
   participant management, and tutor flow need their own rebuild; blocking those accounts is
   better than shipping a half-working host mode.
-- **Student voice.** The old microphone path was unreliable and made the tutor harder to hear.
-  A proper channel needs push-to-talk, a moderator mute, a speaking indicator, and server-side
-  mixing, which requires university collaboration.
+- **Student voice.** The microphone stays off for now while audio transfer and sharing are split
+  and the university's backend behavior is understood. Tutor audio is unaffected.
 - **Notifications.** Session starting, a new screen share, a finished download, and connection
   problems should reach the user even when the launcher is in the background.
 - **Private messaging.** Room chat is included; one-to-one messages are not.

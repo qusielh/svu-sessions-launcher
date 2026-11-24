@@ -81,46 +81,50 @@ The comparison is join to join: the old client's cold path includes unpacking it
 runtime, which is the path on a first run or after a temp cleanup; the new client has no bundled
 runtime to unpack. A warm old join would skip the unpack but still start the JVM and applet.
 
-### The window could not be resized, and small shares stayed small
+### The window was locked, and the viewer could not scale
 
-The session list was a fixed 865×494 VB6 window, and the meeting opened in a separate 275×525
-window. Neither could be resized. When a tutor shared a small window or a low-resolution slide,
-students could not enlarge it, and there was no zoom. This happened often enough to be a normal
-part of using the client, not an edge case.
+The main window was fixed, the chat applet was fixed, and the screen-share viewer was locked to
+the broadcast's dimensions and resolution. None of them could be resized, and the viewer could
+not upscale or downscale the shared content. A tutor who shared a small window or a
+low-resolution slide left students with no way to make it readable.
 
-The cause was fixed pixel layout. The VB6 form used a non-resizable border, the embedded applet
-assumed the same fixed area, and there was no per-monitor DPI handling. The applet had no zoom
-control, so the only workaround was to change the display resolution or move closer to the
-screen.
+The cause was fixed pixel layout. The VB6 forms used non-resizable borders, the embedded applet
+assumed the same fixed area, and the viewer had no zoom or scale control, so it stayed at the
+broadcast's own size.
 
 The shared content is the lecture. If a student cannot read a shared slide or a small
-application window, the session has failed at the point that matters. On high-DPI laptops the
-fixed window was also cramped or partly off-screen.
+application window, the session has failed at the point that matters.
 
-The beta uses resizable WPF windows with edge and corner resizing, per-monitor DPI awareness, and
-a fluid web layout. The screen-share viewer has 1x, 2x, 3x, and Max zoom and can be enlarged
-independently of the chat, so a small share does not force the whole app to an unusable size.
+The beta does not lock the layout. The studio and chat are resizable WPF windows with edge and
+corner resizing, per-monitor DPI awareness, and a fluid web layout. The screen-share viewer has
+1x, 2x, 3x, and Max zoom and can be enlarged independently of the chat. The goal is to let users
+comfortably resize and upscale the viewer rather than restricting them.
 
-### The student microphone made the tutor harder to hear
+### The student microphone broke the tutor's audio
 
-The old client switched the microphone on by default when joining or starting a session. The
-student voice path did not work properly. When the mic opened it picked up room noise and echo,
-and that noise cut into the tutor's audio; the tutor became harder to follow. There was no
-push-to-talk, no moderator mute, and no speaking indicator. Volume control was the Windows
-mixer, not the session.
+The old client had mute controls. Students could mute themselves, and tutors could force-mute a
+student. The failure was around broadcasts: starting a broadcast switched every student
+microphone on by default. Tutors had to re-mute students constantly and lost focus on the
+lecture.
 
-The cause was that the applet requested a capture device as part of its join, and the launcher
-exposed only a mic-mute checkbox. There was no per-session audio session on the client, and no
-push-to-talk, moderator mute, or speaking indicator in the join flow.
+The student audio path was also broken. It stuttered and produced noise, and that noise turned
+the tutor's voice into gibberish for every student in the room. It was not room echo. Mid-session
+joins and rejoins triggered it, so one student arriving late could damage the audio for everyone.
 
-A feature that only adds noise is worse than no feature. Students could not reliably be heard
-anyway, and the open mic damaged the part that did work: the tutor's voice.
+The applet owned the session, and the broadcast start reset the room's microphone state. The
+client exposed mute and force-mute, but not a way to keep microphones off when a broadcast
+began.
 
-This beta never opens a microphone. The status bar reports it muted. Tutor audio is decoded by
-the x86 helper and played through `waveOut`; mute and a 0–300% volume slider apply only to that
-helper's audio session. A proper student voice channel needs push-to-talk, a moderator mute, a
-speaking indicator, and server-side mixing, which requires university collaboration; it is
-deliberately deferred rather than half-shipped.
+A feature that only adds noise is worse than no feature. Tutors spent the lecture policing mutes
+instead of teaching, and a single late join could make the tutor unintelligible for the whole
+room.
+
+This beta keeps the microphone off by default and never opens a capture device. The status bar
+reports it muted. Tutor audio is decoded by the x86 helper and played through `waveOut`; mute and
+a 0–300% volume slider apply only to that helper's audio session. The full mute is temporary:
+student audio stays off until audio transfer and sharing are split and the university's backend
+behavior is understood. `SendVoiceMuteAsync` remains for protocol completeness, not because the
+student sends capture audio.
 
 ### Recordings required a browser, a second sign-in, and a manual search
 
@@ -195,8 +199,8 @@ These are deliberate choices for this beta, not missing pieces of the student fl
   This beta blocks tutor and host accounts on purpose: the host controls, participant
   management, and tutor flow need their own rebuild. Pretending the feature never existed would
   be inaccurate; shipping a half-working host mode would be worse.
-- **Student voice.** Deferred; the microphone stays muted until a proper channel can be built
-  with the university.
+- **Student voice.** The microphone stays off for now while audio transfer and sharing are split
+  and the university's backend behavior is understood. Tutor audio is unaffected.
 - **Notifications.** Session start, a new screen share, a finished download, and connection
   problems should reach the student when the launcher is in the background. Not included yet.
 - **Private messaging.** Room chat is included; one-to-one messages are not.

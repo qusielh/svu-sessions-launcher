@@ -200,11 +200,13 @@ The tutor voice stream is DSP Group TrueSpeech. The helper extracts each 256-byt
 decodes it with the OS ACM codec, and plays it through `waveOut`. Mute and volume are applied to
 the helper's own Core Audio session, so they affect only the tutor's audio.
 
-The launcher never opens a microphone. The 2017 client opened a capture device on join, and in
-practice the student mic path was unreliable: it added room noise and echo that made the tutor
-harder to hear. A proper student voice channel needs server-side roles and mixing, which requires
-university collaboration, so it is deferred. The status bar says the microphone is muted, and
-`SendVoiceMuteAsync` exists for protocol completeness rather than student capture.
+The launcher never opens a microphone. The 2017 client had student mute and tutor force-mute, but
+starting a broadcast switched every student microphone on by default, and the student audio path
+stuttered and produced noise that turned the tutor's voice into gibberish for the whole room.
+Mid-session joins and rejoins triggered it; it was not room echo. The beta keeps capture off by
+default while audio transfer and sharing are split and the university's backend behavior is
+understood. The status bar says the microphone is muted, and `SendVoiceMuteAsync` exists for
+protocol completeness rather than student capture.
 
 ## Window behaviour
 
