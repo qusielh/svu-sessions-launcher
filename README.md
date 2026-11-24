@@ -54,8 +54,8 @@ client; the new ones show the current 3.0.0 beta.
 
 ![The 2017 room chat and the 3.0.0 beta room chat side by side](docs/images/chat-compare.png)
 
-The old chat applet was locked to its own small window, with a cramped transcript and no
-scaling. The beta keeps the same room protocol and history, but gives the chat a clean RTL
+The old chat applet was locked to its own small window, with a cramped transcript and no way to
+enlarge it. The beta keeps the same room protocol and history, but gives the chat a clean RTL
 layout, readable message grouping and timestamps, and a window that resizes with the rest of the
 app. Student usernames and avatar initials are blurred in both chat screenshots.
 
