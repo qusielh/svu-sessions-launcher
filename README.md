@@ -292,7 +292,7 @@ src\SvuSessionsLauncher\        WPF host (.NET 10, x64)
   ViewModels\                   studio, sign-in, and downloads state
   Views\                        WPF window hosts for login, studio, chat, viewer
 src\SvuVoiceHelper\             32-bit TrueSpeech decode/playback helper
-installer\                      Inno Setup script and pre-install notes
+installer\                      Inno Setup script and wizard image
 build-release.ps1               portable zip packaging
 build-installer.ps1             zip + Inno Setup installer
 docs\                           architecture, code map, legacy history, security, releases, images

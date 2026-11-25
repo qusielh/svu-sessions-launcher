@@ -43,17 +43,20 @@ OutputDir={#OutputDir}
 OutputBaseFilename=SVU-Sessions-Launcher-{#AppVersion}-win-x64-setup
 SetupIconFile=..\src\SvuSessionsLauncher\Assets\app.ico
 UninstallDisplayIcon={app}\{#AppExeName}
-LicenseFile=..\LICENSE
-InfoBeforeFile=BeforeInstall.txt
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
+WizardSmallImageFile=wizard-small.bmp
 CloseApplications=yes
 RestartApplications=no
 SetupLogging=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Messages]
+WelcomeLabel1=Welcome to the [name] Setup Wizard
+WelcomeLabel2=This will install [name/ver] for your Windows account.%n%nA student-only client for SVU online sessions. No administrator rights are needed.%n%nClose any running copy of the launcher before continuing, then click Next.
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Additional icons:"; Flags: unchecked
@@ -94,6 +97,66 @@ begin
       'SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}',
       'pv',
       Version);
+end;
+
+procedure InitializeWizard;
+var
+  BeforePage: TWizardPage;
+  Intro, ReqTitle, ReqBody, CheckNote, BetaNote: TNewStaticText;
+begin
+  BeforePage := CreateCustomPage(wpWelcome, 'Before you install',
+    'A quick check before setup copies any files.');
+
+  Intro := TNewStaticText.Create(BeforePage);
+  Intro.Parent := BeforePage.Surface;
+  Intro.Left := 0;
+  Intro.Top := 0;
+  Intro.AutoSize := False;
+  Intro.WordWrap := True;
+  Intro.Width := BeforePage.SurfaceWidth;
+  Intro.Caption := 'SVU Sessions Launcher {#AppVersion} installs for your Windows account. ' +
+    'It does not need administrator rights.';
+  Intro.AdjustHeight;
+
+  ReqTitle := TNewStaticText.Create(BeforePage);
+  ReqTitle.Parent := BeforePage.Surface;
+  ReqTitle.Left := 0;
+  ReqTitle.Top := Intro.Top + Intro.Height + ScaleY(14);
+  ReqTitle.Caption := 'Requirements';
+  ReqTitle.Font.Style := [fsBold];
+
+  ReqBody := TNewStaticText.Create(BeforePage);
+  ReqBody.Parent := BeforePage.Surface;
+  ReqBody.Left := 0;
+  ReqBody.Top := ReqTitle.Top + ReqTitle.Height + ScaleY(5);
+  ReqBody.AutoSize := False;
+  ReqBody.WordWrap := True;
+  ReqBody.Width := BeforePage.SurfaceWidth;
+  ReqBody.Caption := 'Windows 10 or 11 (64-bit), the .NET 10 Desktop Runtime (x64), and Microsoft Edge WebView2. ' +
+    'Tutor voice also needs the .NET 10 Runtime (x86) and the TrueSpeech codec.';
+  ReqBody.AdjustHeight;
+
+  CheckNote := TNewStaticText.Create(BeforePage);
+  CheckNote.Parent := BeforePage.Surface;
+  CheckNote.Left := 0;
+  CheckNote.Top := ReqBody.Top + ReqBody.Height + ScaleY(12);
+  CheckNote.AutoSize := False;
+  CheckNote.WordWrap := True;
+  CheckNote.Width := BeforePage.SurfaceWidth;
+  CheckNote.Caption := 'Setup checks the required runtimes before copying files. If one is missing, ' +
+    'it offers the download page and stops; it never installs runtimes silently.';
+  CheckNote.AdjustHeight;
+
+  BetaNote := TNewStaticText.Create(BeforePage);
+  BetaNote.Parent := BeforePage.Surface;
+  BetaNote.Left := 0;
+  BetaNote.Top := CheckNote.Top + CheckNote.Height + ScaleY(12);
+  BetaNote.AutoSize := False;
+  BetaNote.WordWrap := True;
+  BetaNote.Width := BeforePage.SurfaceWidth;
+  BetaNote.Caption := 'Student accounts only. Tutor and host accounts are blocked in this beta. ' +
+    'The app is not code-signed, so Windows may warn on first launch.';
+  BetaNote.AdjustHeight;
 end;
 
 function InitializeSetup(): Boolean;

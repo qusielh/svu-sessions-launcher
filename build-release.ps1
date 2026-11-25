@@ -81,8 +81,10 @@ Notes
 - The launcher is unofficial and not endorsed by SVU.
 - Student accounts only; tutor and host accounts are blocked in this beta.
 - App state and logs live under %APPDATA%\SVU Sessions Launcher.
+- MIT licensed. See LICENSE.
 "@
     Set-Content -Path (Join-Path $app 'README.txt') -Value $releaseReadme -Encoding UTF8
+    Copy-Item (Join-Path $root 'LICENSE') (Join-Path $app 'LICENSE') -Force
 
     New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
     $zip = Join-Path $OutputDir "SVU-Sessions-Launcher-$version-win-x64.zip"

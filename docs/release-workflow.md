@@ -120,6 +120,10 @@ and can optionally create a desktop shortcut. It checks the .NET 10 Desktop Runt
 WebView2 before installing, and warns about the optional x86 runtime and TrueSpeech codec. It
 does not download or install runtimes silently.
 
+The wizard has no license or terms page. A static "Before you install" page lists the
+requirements without a read-only text box, and the MIT license is installed as `LICENSE` in the
+app folder.
+
 The setup is compiled into `%TEMP%\opencode\svu-setup-out` and then moved into `dist`. Antivirus
 scanners often lock a setup file that was just executed, and Inno cannot update resources in a
 locked file.
@@ -133,7 +137,7 @@ Use `.\build-release.ps1` alone only when you need the portable zip without the 
 Do not publish the first files that appear. Check the zip:
 
 - [ ] The zip opens and contains `SvuSessionsLauncher.exe`, `SvuVoiceHelper.exe`, the WPF
-      dependencies, and `README.txt`.
+      dependencies, `README.txt`, and `LICENSE`.
 - [ ] No `.pdb`, no XML documentation, no `runtimes\win-arm64`, no `runtimes\win-x86`, no
       `SvuSessionsLauncher.exe.WebView2` profile.
 - [ ] Extract to a clean folder and launch. Sign-in renders, the studio opens, a session can be
@@ -162,7 +166,8 @@ Check the installer:
 - [ ] Uninstalling runs `unins000.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART`, removes the
       install folder and the Start Menu folder, and removes the uninstall registry key at
       `HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\{139FD741-0EB5-468B-BD78-641B5891DD0E}_is1`.
-- [ ] A normal interactive install shows the requirements page and creates the Start Menu entry.
+- [ ] A normal interactive install shows the "Before you install" page and creates the Start
+      Menu entry.
 - [ ] The installer does not request elevation and does not install runtimes itself.
 
 ## Step 6 — Commit, tag, and push
