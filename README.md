@@ -54,10 +54,10 @@ client; the new ones show the current 3.0.0 beta.
 
 ![The 2017 room chat and the 3.0.0 beta room chat side by side](docs/images/chat-compare.png)
 
-The old chat applet was locked to its own small window, with a cramped transcript and no way to
-enlarge it. The beta keeps the same room protocol and history, but gives the chat a clean RTL
-layout, readable message grouping and timestamps, and a window that resizes with the rest of the
-app. Student usernames and avatar initials are blurred in both chat screenshots.
+The old chat applet was locked to its own small window, with a cramped transcript and no in-app
+way to enlarge it. The beta keeps the same room protocol and history, but gives the chat a clean
+RTL layout, readable message grouping and timestamps, and a window that resizes with the rest of
+the app. Student usernames and avatar initials are blurred in both chat screenshots.
 
 ## Why the launcher was rebuilt
 
@@ -98,24 +98,32 @@ The comparison is join to join: the old client's cold path includes unpacking it
 runtime, which is the path on a first run or after a temp cleanup; the new client has no bundled
 runtime to unpack. A warm old join would skip the unpack but still start the JVM and applet.
 
-### The window was locked, and the viewer could not scale
+### The window was locked, and the viewer had no zoom
 
-The main window was fixed, the chat applet was fixed, and the screen-share viewer was locked to
-the broadcast's dimensions and resolution. None of them could be resized, and the viewer could
-not upscale or downscale the shared content. A tutor who shared a small window or a
-low-resolution slide left students with no way to make it readable.
+The main window was fixed, the chat applet was fixed, and the screen-share viewer stayed at the
+broadcast's dimensions. None of them could be resized, and the viewer had no zoom of its own. A
+tutor who shared a small window or a low-resolution slide still left students a way to read it,
+but the workarounds were rough. One was to lower the Windows display resolution until everything
+on screen grew; that also pushed the launcher, the chat, and the taskbar around the slide, and it
+had to be undone afterwards. The other was Windows Magnifier, which zooms the whole desktop and
+follows the pointer, so the part of the slide you were reading drifted away as soon as you moved
+the mouse.
 
 The cause was fixed pixel layout. The VB6 forms used non-resizable borders, the embedded applet
 assumed the same fixed area, and the viewer had no zoom or scale control, so it stayed at the
 broadcast's own size.
 
-The shared content is the lecture. If a student cannot read a shared slide or a small
-application window, the session has failed at the point that matters.
+The shared content is the lecture. If a student has to stop watching, change a system setting,
+and chase the slide under a magnifier, the client has added friction at the point that matters.
 
 The beta does not lock the layout. The studio and chat are resizable WPF windows with edge and
-corner resizing, per-monitor DPI awareness, and a fluid web layout. The screen-share viewer has
-1x, 2x, 3x, and Max zoom and can be enlarged independently of the chat. The goal is to let users
-comfortably resize and upscale the viewer rather than restricting them.
+corner resizing, per-monitor DPI awareness, and a fluid web layout. The screen-share viewer is a
+separate resizable window with four scale presets. Reset shows the share at its actual size; 2x
+and 3x enlarge the window when it fits, and zoom inside it with scrollbars when the share is
+already close to screen size; Max opens the largest copy that still fits the screen. The
+enlargement happens inside the viewer, so the desktop layout and the other windows stay as they
+were. That is the difference: not a new ability to see a small share, but a way to do it without
+changing the system around it.
 
 ### The student microphone broke the tutor's audio
 
@@ -142,6 +150,25 @@ a 0–300% volume slider apply only to that helper's audio session. The full mut
 student audio stays off until audio transfer and sharing are split and the university's backend
 behavior is understood. `SendVoiceMuteAsync` remains for protocol completeness, not because the
 student sends capture audio.
+
+### A quiet tutor left students choosing between headphones and a booster
+
+The old applet did have a volume slider, and Windows had its own mixer, so there were two places
+to turn the tutor up. The gap was at the top of the range. Some tutors' microphones were quiet at
+the source, and once both sliders sat at 100%, there was nothing left to turn up. Students put on
+headphones and listened closely, or installed a volume booster and accepted whatever it did to
+the rest of the audio.
+
+Neither is a good answer during a lecture. Headphones shut out the room, but they do not raise
+the volume, and a booster is another program on the machine, often amplifying noise along with
+the voice. The cap was the real limit: a 100% slider cannot make a quiet stream louder than its
+source, no matter how many sliders are stacked on top of it.
+
+The beta gives the tutor's audio its own slider in the viewer title bar, and it goes to 300%. The
+boost is applied by the voice helper to its own audio session, so the rest of the system keeps
+its normal volume. Pushing the slider that high will lift background noise along with the voice,
+and it cannot repair a microphone that was bad at the tutor's end. What it does remove is the
+everyday choice between headphones and extra software when the tutor is simply quiet.
 
 ### Recordings required a browser, a second sign-in, and a manual search
 

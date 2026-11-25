@@ -131,7 +131,7 @@ lean and means the UI works offline.
 | `LoginWindow.xaml` / `.xaml.cs` | Fixed sign-in window; hosts the login page; posts state and receives input. |
 | `MainStudioWindow.xaml` / `.xaml.cs` | Studio window; WebView bridge, resize grips, downloads state, theme/language pushes, navigation guard. |
 | `ChatWindow.xaml` / `.xaml.cs` | Session window; prewarm/reveal, chat/voice/leave actions, connection event relay, external-link guard. |
-| `ViewerWindow.xaml` / `.xaml.cs` | Screen-share viewer; BGRA frame copy, 1x/2x/3x/Max zoom, independent lifetime. |
+| `ViewerWindow.xaml` / `.xaml.cs` | Screen-share viewer; BGRA frame copy, Reset/2x/3x/Max presets, independent lifetime. |
 
 ## `src/SvuVoiceHelper` — 32-bit audio helper
 

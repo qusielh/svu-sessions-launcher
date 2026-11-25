@@ -198,7 +198,9 @@ playback through `VoicePlayback`, which launches and feeds the x86 helper.
 
 The tutor voice stream is DSP Group TrueSpeech. The helper extracts each 256-byte payload,
 decodes it with the OS ACM codec, and plays it through `waveOut`. Mute and volume are applied to
-the helper's own Core Audio session, so they affect only the tutor's audio.
+the helper's own Core Audio session, so they affect only the tutor's audio. The slider runs from
+0 to 300%; the session volume stops at 100%, so the helper applies software gain above that and
+keeps the session level at 1.0.
 
 The launcher never opens a microphone. The 2017 client had student mute and tutor force-mute, but
 starting a broadcast switched every student microphone on by default, and the student audio path

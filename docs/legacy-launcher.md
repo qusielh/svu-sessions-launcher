@@ -69,26 +69,31 @@ The comparison is join to join. The old client's cold path includes unpacking it
 runtime, which is the path on a first run or after a temp cleanup; the new client has no bundled
 runtime to unpack. A warm old join would skip the unpack but still start the JVM and applet.
 
-### 2. The window was locked, and the viewer could not scale
+### 2. The window was locked, and the viewer had no zoom
 
 **Symptom.** The main window was fixed, the chat applet was fixed, and the screen-share viewer
-was locked to the broadcast's dimensions and resolution. None of them could be resized, and the
-viewer could not upscale or downscale the shared content. A tutor who shared a small window or a
-low-resolution slide left students with no way to make it readable.
+stayed at the broadcast's dimensions. None of them could be resized, and the viewer had no zoom
+of its own. A tutor who shared a small window or a low-resolution slide left students with two
+workarounds: lower the Windows display resolution so everything got bigger, or run Magnifier over
+the shared area. Lowering the resolution rearranged every other window and had to be undone after
+the lecture; Magnifier followed the cursor, so the slide drifted out of view whenever the mouse
+moved.
 
 **Cause.** The old client used fixed pixel layouts and non-resizable windows. The embedded
 applet assumed the same fixed area, and the viewer had no zoom or scale control, so it stayed at
 the broadcast's own size.
 
-**Why it mattered.** The shared content is the lecture. If a tutor shared a small application
-window or a low-resolution slide, the student could not read it. This happened often enough to
-be a normal part of using the client, not an edge case.
+**Why it mattered.** The shared content is the lecture. A student could read a small share, but
+only by leaving the lecture surface for a system tool. This happened often enough to be a normal
+part of using the client, not an edge case.
 
 **Rebuild.** The studio is a normal resizable WPF window with `WindowResizer` handling every edge
 and corner. The web layout is fluid, and the shared column tracks keep the session table aligned
-at any width. `app.manifest` declares per-monitor DPI awareness. The viewer adds 1x, 2x, 3x, and
-Max zoom and can be enlarged independently of the chat. The design goal is to let users
-comfortably resize and upscale the viewer rather than restricting it.
+at any width. `app.manifest` declares per-monitor DPI awareness. The viewer adds Reset, 2x, 3x,
+and Max presets and can be enlarged independently of the chat. The enlargement happens inside the
+viewer, so the desktop layout and the other windows stay as they were. The old client did not
+leave students with nothing; it left them with system-level workarounds. The rebuild moves the
+same need into the window where the lecture is.
 
 ### 3. Arabic was bolted on
 
@@ -134,6 +139,13 @@ affect only the tutor's audio and nothing else on the machine. The full mute is 
 student audio stays off until audio transfer and sharing are split and the university's backend
 behavior is understood. `SendVoiceMuteAsync` remains for protocol completeness, not because the
 student sends capture audio.
+
+Tutor volume is the other half of the audio story. The applet had its own slider and Windows had
+the system mixer, but both stopped at 100%. When a tutor's microphone was quiet at the source,
+students wore headphones or installed a booster to hear the lecture. The beta's slider runs to
+300% and acts on the helper's own audio session, so a quiet tutor can be raised without changing
+the system volume or adding another program. It also raises background noise at high settings,
+which is the trade; it cannot fix a bad microphone at the tutor's end.
 
 ### 5. Saved credentials were weakly protected
 
