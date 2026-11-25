@@ -159,10 +159,11 @@ the source, and once both sliders sat at 100%, there was nothing left to turn up
 headphones and listened closely, or installed a volume booster and accepted whatever it did to
 the rest of the audio.
 
-Neither is a good answer during a lecture. Headphones shut out the room, but they do not raise
-the volume, and a booster is another program on the machine, often amplifying noise along with
-the voice. The cap was the real limit: a 100% slider cannot make a quiet stream louder than its
-source, no matter how many sliders are stacked on top of it.
+Neither is a good answer during a lecture. Headphones shut out the room and make a quiet voice
+easier to follow, but they do not raise the volume, and a booster is another program on the
+machine, often amplifying noise along with the voice. The cap was the real limit: a 100% slider
+cannot make a quiet stream louder than its source, no matter how many sliders are stacked on top
+of it.
 
 The beta gives the tutor's audio its own slider in the viewer title bar, and it goes to 300%. The
 boost is applied by the voice helper to its own audio session, so the rest of the system keeps
