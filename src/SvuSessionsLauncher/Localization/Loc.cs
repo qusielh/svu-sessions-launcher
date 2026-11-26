@@ -46,7 +46,6 @@ public sealed class Loc : INotifyPropertyChanged
             ["main.welcome"] = "Signed in as {0}",
             ["role.student"] = "Student",
             ["dataSource.live"] = "Live university service",
-            ["dataSource.demo"] = "Offline demo data",
             ["main.options"] = "Show",
             ["opt.today"] = "Today's sessions",
             ["opt.myClasses"] = "My classes only",
@@ -136,7 +135,6 @@ public sealed class Loc : INotifyPropertyChanged
             ["diag.running"] = "Running diagnostics\u2026",
             ["diag.done"] = "Diagnostics saved to {0}",
             ["diag.failed"] = "Diagnostics failed.",
-            ["diag.demo"] = "Diagnostics only run against the live service.",
 
             ["download.title"] = "Download sessions",
             ["download.subtitle"] = "Pick a term, then narrow down to a class to list its recordings.",
@@ -204,7 +202,6 @@ public sealed class Loc : INotifyPropertyChanged
             ["main.welcome"] = "\u0645\u0631\u062d\u0628\u064b\u0627 {0}",
             ["role.student"] = "\u0637\u0627\u0644\u0628",
             ["dataSource.live"] = "خدمة الجامعة المباشرة",
-            ["dataSource.demo"] = "\u0628\u064a\u0627\u0646\u0627\u062a \u062a\u062c\u0631\u064a\u0628\u064a\u0629",
             ["main.options"] = "الخيارات",
             ["opt.today"] = "\u062c\u0644\u0633\u0627\u062a \u0627\u0644\u064a\u0648\u0645",
             ["opt.myClasses"] = "\u062d\u0635\u0635\u064a \u0641\u0642\u0637",
@@ -290,7 +287,6 @@ public sealed class Loc : INotifyPropertyChanged
             ["diag.running"] = "\u062c\u0627\u0631\u064d \u062a\u0634\u063a\u064a\u0644 \u0627\u0644\u062a\u0634\u062e\u064a\u0635\u2026",
             ["diag.done"] = "\u062a\u0645 \u062d\u0641\u0638 \u0627\u0644\u062a\u0634\u062e\u064a\u0635 \u0641\u064a {0}",
             ["diag.failed"] = "\u0641\u0634\u0644 \u0627\u0644\u062a\u0634\u062e\u064a\u0635.",
-            ["diag.demo"] = "\u064a\u0639\u0645\u0644 \u0627\u0644\u062a\u0634\u062e\u064a\u0635 \u0641\u0642\u0637 \u0645\u0639 \u0627\u0644\u062e\u062f\u0645\u0629 \u0627\u0644\u0645\u0628\u0627\u0634\u0631\u0629.",
 
             ["download.title"] = "\u062a\u0646\u0632\u064a\u0644 \u0627\u0644\u062c\u0644\u0633\u0627\u062a",
             ["download.subtitle"] = "\u0627\u062e\u062a\u0631 \u0627\u0644\u0641\u0635\u0644 \u062b\u0645 \u0636\u064a\u0651\u0642 \u062d\u062a\u0649 \u0627\u0644\u0635\u0641 \u0644\u0639\u0631\u0636 \u062a\u0633\u062c\u064a\u0644\u0627\u062a\u0647.",

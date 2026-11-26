@@ -8,8 +8,7 @@ namespace SvuSessionsLauncher.Linktivity;
 /// The header carries the control channel, request code, route, flags and
 /// inflated size; <see cref="Messages"/> builds the common frames and
 /// <see cref="LinkConnection"/> moves them over the socket. Optional zlib
-/// compression, a lightweight XOR obfuscation, and the vendor CAST cipher hooks
-/// live here, although the student client never enables the CAST cipher.
+/// compression and a lightweight XOR obfuscation live here.
 /// </summary>
 public class Message
 {
@@ -64,9 +63,6 @@ public class Message
     public const int FlagIncremental = 512;
     public const int FlagEmbedded = 1024;
     public const int FlagAvailable = 2048;
-    public const int FlagEncrypted = 4096;
-    public const int FlagPadded = 8192;
-    public const int FlagClearEncrypted = 53247;
 
     private static readonly byte[] EncryptTable = new byte[]
     {
@@ -172,17 +168,13 @@ public class Message
 
     public bool IsEmbedded => (GetFlags() & FlagEmbedded) == FlagEmbedded;
 
-    public bool IsPadded => (GetFlags() & FlagPadded) == FlagPadded;
-
-    public bool IsEncrypted => (GetFlags() & FlagEncrypted) == FlagEncrypted;
-
     public int GetInt(int offset, int length) =>
         BufferConversion.BytesToInt(GetBuffer(offset, length), offset, length);
 
     public void SetInt(int value, int offset, int length) =>
         BufferConversion.IntToBytes(value, Buffer!, offset, length);
 
-    public byte[] GetBuffer(int offset, int length) => IsEncrypted ? (Buffer ?? Array.Empty<byte>()) : (Buffer ?? Array.Empty<byte>());
+    public byte[] GetBuffer(int offset, int length) => Buffer ?? Array.Empty<byte>();
 
     public byte[] GetBytes(int offset) =>
         BufferConversion.Slice(GetBuffer(offset, BufferLength - offset), offset, BufferLength - offset);
@@ -270,39 +262,16 @@ public class Message
 
     private void EncryptBuffer(bool apply) => EncryptBuffer(Header, 0, Buffer ?? Array.Empty<byte>(), 0, BufferLength, apply);
 
-    public byte[]? Decrypt(CastCipher? cipher)
-    {
-        if (cipher != null && IsEncrypted)
-        {
-            Buffer = cipher.Decrypt(Buffer ?? Array.Empty<byte>(), BufferLength, IsPadded);
-            BufferLength = Buffer.Length;
-            SetSize(BufferLength);
-            SetFlags(GetFlags() & FlagClearEncrypted);
-        }
-        return Buffer;
-    }
-
     public void DecryptXor()
     {
         EncryptHeader(false);
         EncryptBuffer(false);
     }
 
-    public byte[] FillWriteBuffer(bool encrypt, CastCipher? cipher, bool httpEnvelope = false)
+    public byte[] FillWriteBuffer(bool encrypt, bool httpEnvelope = false)
     {
         byte[] outBuffer = Buffer ?? Array.Empty<byte>();
         int outLength = BufferLength;
-        bool cipherApplied = false;
-        if (cipher != null)
-        {
-            encrypt = false;
-            if (outLength > 0 && !IsEncrypted && !IsBufferEncrypted(Header, 0))
-            {
-                outBuffer = cipher.Encrypt(outBuffer, outLength);
-                outLength = outBuffer.Length;
-                cipherApplied = true;
-            }
-        }
 
         int tempSize = Header.Length + outLength;
         byte[]? prefix = null;
@@ -320,29 +289,24 @@ public class Message
             System.Buffer.BlockCopy(prefix, 0, wire, 0, prefixLen);
         }
         System.Buffer.BlockCopy(Header, 0, wire, headerPos, Header.Length);
-        if (encrypt && cipher == null)
+        if (encrypt)
         {
             EncryptHeader(wire, headerPos, true);
         }
         if (outLength > 0)
         {
             System.Buffer.BlockCopy(outBuffer, 0, wire, headerPos + Header.Length, outLength);
-            if (encrypt && cipher == null)
+            if (encrypt)
             {
                 EncryptBuffer(wire, headerPos, wire, headerPos + Header.Length, outLength, true);
-            }
-            else if (cipherApplied)
-            {
-                SetSize(wire, headerPos, outLength);
-                SetFlags(wire, headerPos, GetFlags(wire, headerPos) | (outLength > BufferLength ? FlagEncrypted | FlagPadded : FlagEncrypted));
             }
         }
         return wire;
     }
 
-    public void Write(Stream output, bool encrypt, CastCipher? cipher, bool httpEnvelope = false)
+    public void Write(Stream output, bool encrypt, bool httpEnvelope = false)
     {
-        byte[] wire = FillWriteBuffer(encrypt, cipher, httpEnvelope);
+        byte[] wire = FillWriteBuffer(encrypt, httpEnvelope);
         output.Write(wire, 0, wire.Length);
     }
 

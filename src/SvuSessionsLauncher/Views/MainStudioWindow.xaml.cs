@@ -663,7 +663,6 @@ public partial class MainStudioWindow : Window
                 welcome = vm.WelcomeText,
                 dataSource = vm.DataSourceText,
                 role = vm.RoleText,
-                live = vm.IsLiveData,
                 term = vm.CurrentTerm,
                 termLabel = vm.TermLabel,
                 hasTerm = vm.HasTerm,

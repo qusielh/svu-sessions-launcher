@@ -27,7 +27,7 @@ public sealed class LinktivitySessionConnection : ISessionConnection
     private bool _voiceMuted;
     private float _voiceVolume = 1f;
 
-    public LinktivitySessionConnection(string host, int port, int type, string sessionId, string user,
+    public LinktivitySessionConnection(string host, int port, string sessionId, string user,
         int width, int height)
     {
         _user = user ?? string.Empty;
@@ -46,7 +46,7 @@ public sealed class LinktivitySessionConnection : ISessionConnection
             bool joined;
             try
             {
-                joined = _engine.Join(host, port, type, sessionId, _user, width, height, false);
+                joined = _engine.Join(host, port, sessionId, _user, width, height, false);
             }
             catch (Exception exception)
             {

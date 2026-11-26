@@ -158,7 +158,7 @@ public sealed class SessionEngine : IDisposable
         get { lock (_gate) { return _byConnection.Values.ToList(); } }
     }
 
-    public bool Join(string host, int port, int type, string sessionId, string user,
+    public bool Join(string host, int port, string sessionId, string user,
         int width, int height, bool asHost, int timeoutMs = 20000)
     {
         SessionId = sessionId;
@@ -167,7 +167,7 @@ public sealed class SessionEngine : IDisposable
         LinkConnection connection;
         try
         {
-            connection = new LinkConnection(host, port, type, 8192, sessionId, user);
+            connection = new LinkConnection(host, port, 8192, sessionId);
         }
         catch (Exception exception)
         {

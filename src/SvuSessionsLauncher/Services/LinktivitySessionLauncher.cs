@@ -1,4 +1,3 @@
-using SvuSessionsLauncher.Linktivity;
 using SvuSessionsLauncher.Models;
 
 namespace SvuSessionsLauncher.Services;
@@ -27,7 +26,6 @@ public sealed class LinktivitySessionLauncher : ISessionLauncher
             () => new LinktivitySessionConnection(
                 host,
                 MeetingPort,
-                Connection.Ssl,
                 request.LinkId,
                 request.Username,
                 width,

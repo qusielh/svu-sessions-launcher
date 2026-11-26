@@ -43,9 +43,6 @@ public sealed class AppSettings
     /// <summary>Base URL of the WebDemo service. Overridable in config.</summary>
     public string ServiceUrl { get; set; } = "https://svuis.svuonline.org/SVUIS/WebDemo_wservice/NewSessions2.php?wsdl";
 
-    /// <summary>When true the app runs against mock data instead of the live service.</summary>
-    public bool UseMockService { get; set; } = false;
-
     /// <summary>Folder recordings are saved to from the downloads window. Empty uses the user's Downloads folder.</summary>
     public string DownloadDirectory { get; set; } = string.Empty;
 

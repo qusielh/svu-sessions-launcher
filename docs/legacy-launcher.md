@@ -256,10 +256,10 @@ studio.
 These are properties of the university's services and the vendor protocol. They are not features
 the client chose to skip, and most cannot be fixed in the client alone.
 
-- **Linktivity is not TLS.** The vendor calls its handshake "SSL", but it is a fixed preamble and
-  an optional CAST cipher that this client never enables. Session traffic is effectively
-  unencrypted. Fixing that requires a protocol change on the university side; the constraint is
-  documented in [security-privacy.md](security-privacy.md) rather than hidden.
+- **Linktivity is not TLS.** The vendor calls its handshake "SSL", but it is a fixed preamble.
+  The client implements no cipher, so session traffic is effectively unencrypted. Fixing that
+  requires a protocol change on the university side; the constraint is documented in
+  [security-privacy.md](security-privacy.md) rather than hidden.
 - **The recordings page is plain HTTP.** The page is public and unauthenticated, but a hostile
   network could observe or alter what is downloaded. The app does not send credentials there.
 - **TrueSpeech is old and 32-bit.** It is low quality and requires the x86 helper. The service

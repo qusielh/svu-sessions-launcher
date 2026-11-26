@@ -37,11 +37,7 @@ public partial class App : Application
         _credentials = new DpapiCredentialStore();
         DisplayOptions.Use24HourClock = _settings.Use24HourClock;
 
-        // A single switch controls mock vs live data. Flip UseMockService in
-        // settings.json to test offline.
-        _service = _settings.UseMockService
-            ? new MockWebDemoService()
-            : new CachedWebDemoService(new SoapWebDemoService(_settings.ServiceUrl));
+        _service = new CachedWebDemoService(new SoapWebDemoService(_settings.ServiceUrl));
         _launcher = new LinktivitySessionLauncher();
 
         Loc.Instance.Language = string.IsNullOrWhiteSpace(_settings.Language)
@@ -172,7 +168,7 @@ public partial class App : Application
             }
 
             var user = loginVm.AuthenticatedUser ?? loginVm.Username;
-            var mainVm = new MainViewModel(_service, _launcher, _settings, user, liveData: !_settings.UseMockService);
+            var mainVm = new MainViewModel(_service, _launcher, _settings, user);
 
             var main = new MainStudioWindow { DataContext = mainVm };
 

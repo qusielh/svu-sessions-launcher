@@ -23,7 +23,6 @@ public sealed class MainViewModel : ObservableObject
     private readonly ISessionLauncher _launcher;
     private readonly AppSettings _settings;
     private readonly string _user;
-    private readonly bool _liveData;
 
     private ProgramInfo? _selectedProgram;
     private CourseInfo? _selectedCourse;
@@ -44,20 +43,19 @@ public sealed class MainViewModel : ObservableObject
     private IReadOnlyList<HeaderOption> _headerOptions = [];
     private IReadOnlyList<PresetOption> _presetOptions = [];
 
-    public MainViewModel(IWebDemoService service, ISessionLauncher launcher, AppSettings settings, string user, bool liveData)
+    public MainViewModel(IWebDemoService service, ISessionLauncher launcher, AppSettings settings, string user)
     {
         _service = service;
         _launcher = launcher;
         _settings = settings;
         _user = user;
-        _liveData = liveData;
 
         RefreshCommand = new RelayCommand(RefreshAsync, () => !IsBusy);
         LaunchCommand = new RelayCommand(
             LaunchAsync, () => SelectedSession?.CanLaunch == true && !IsBusy && !IsSessionActive);
         SignOutCommand = new RelayCommand(() => SignOut?.Invoke(this, EventArgs.Empty));
         ExitCommand = new RelayCommand(() => ExitRequested?.Invoke(this, EventArgs.Empty));
-        DiagnosticsCommand = new RelayCommand(DiagnosticsAsync, () => !IsBusy && _liveData);
+        DiagnosticsCommand = new RelayCommand(DiagnosticsAsync, () => !IsBusy);
         ToggleTimeCommand = new RelayCommand(ToggleTimeFormat);
 
         _selectedMode = Modes[0];
@@ -497,11 +495,8 @@ public sealed class MainViewModel : ObservableObject
 
     public string User => _user;
 
-    /// <summary>True when the current view-model talks to the live university service.</summary>
-    public bool IsLiveData => _liveData;
-
     /// <summary>Localised label for the data source next to the header badges.</summary>
-    public string DataSourceText => Loc.Instance[IsLiveData ? "dataSource.live" : "dataSource.demo"];
+    public string DataSourceText => Loc.Instance["dataSource.live"];
 
     public string WelcomeText => Loc.Instance.Format("main.welcome", _user);
 
@@ -1071,12 +1066,6 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>Runs the live parameter sweep and records every raw reply.</summary>
     private async Task DiagnosticsAsync()
     {
-        if (!_liveData)
-        {
-            SetStatus("diag.demo");
-            return;
-        }
-
         IsBusy = true;
         SetStatus("diag.running");
         try

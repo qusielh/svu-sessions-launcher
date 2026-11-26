@@ -155,12 +155,12 @@ and a `.part` file; a failed download never overwrites a completed one.
 
 ### Linktivity: vendor protocol, not TLS
 
-This is the most important limitation. The vendor's `Connection.Ssl` name is misleading:
+This is the most important limitation. The vendor calls its handshake "SSL", but that name is
+misleading:
 
 - The handshake is a fixed client/server preamble, not a TLS negotiation.
 - No certificate is validated.
-- The optional CAST cipher exists in `CastCipher.cs`, but `EnableCipher` and `SetCipherKey` are
-  never called, so session traffic is effectively unencrypted.
+- The client implements no cipher, so session traffic is unencrypted.
 
 Anyone on the network path could observe or alter session traffic. Fixing this requires the
 university's session service to support real transport security; the client cannot add TLS

@@ -41,9 +41,8 @@ The result is three process types at most: the launcher, WebView2's browser/rend
    sign-in page and the later in-session loader then paint without paying a cold start on screen.
 3. **Load state.** `AppSettings.Load()` reads non-secret preferences. `DpapiCredentialStore` is
    created for the optional saved password.
-4. **Choose the data source.** `UseMockService` selects `MockWebDemoService`; otherwise the app
-   uses `CachedWebDemoService(SoapWebDemoService)`. `LinktivitySessionLauncher` is always the
-   session launcher.
+4. **Create the services.** `CachedWebDemoService(SoapWebDemoService)` supplies catalog and
+   session data; `LinktivitySessionLauncher` opens sessions.
 5. **Apply language and theme** before any window is created, so the first frame is already
    correct.
 6. **Run the window loop.** `RunAppAsync()` shows sign-in (or signs in silently on the first
@@ -129,8 +128,6 @@ memory, then `%LOCALAPPDATA%\SVU Sessions Launcher\catalog.json`, then the servi
 refresh updates the file; a single-programme prefetch warms courses without hammering the server.
 Sessions, today's sessions, trainer checks, and diagnostics always go to the live service.
 
-`MockWebDemoService` provides deterministic sample data for offline UI work.
-
 ### Settings, credentials, paths
 
 - `AppSettings` persists language, theme, filter picks, endpoints, download preferences, and the
@@ -180,8 +177,8 @@ SessionEngine                 join, roster, chat, voice, viewport
 
 `LinktivitySessionLauncher` chooses the meeting host from the student URL when it looks like
 `classN.svuonline.org`, otherwise from the session's zero-based server number. It always uses
-port 443 and the vendor's `Connection.Ssl` mode. That name is misleading: the handshake is a
-fixed vendor preamble, not TLS, and the optional CAST cipher is never enabled. The limitation is
+port 443 and the vendor's fixed route handshake. The vendor calls that handshake "SSL", but it is
+not TLS: no certificate is validated and no cipher is negotiated. The limitation is
 documented in [security-privacy.md](security-privacy.md) because it cannot be fixed without
 changing the university's session service.
 

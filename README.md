@@ -244,9 +244,9 @@ These are deliberate choices for this beta, not missing pieces of the student fl
 These are not missing features in the client. They are properties of the services the client
 must use.
 
-- **Linktivity is not TLS.** The vendor calls its handshake "SSL", but it is a fixed preamble and
-  an optional CAST cipher that this client never enables. Session traffic is effectively
-  unencrypted. Fixing it requires a protocol change on the university side.
+- **Linktivity is not TLS.** The vendor calls its handshake "SSL", but it is a fixed preamble.
+  The client implements no cipher, so session traffic is effectively unencrypted. Fixing it
+  requires a protocol change on the university side.
 - **The recordings page is plain HTTP.** It is the only published interface. The page is public
   and the client sends no credentials, but a hostile network could observe or alter a download.
 - **Tutor voice is TrueSpeech.** The service sends DSP Group TrueSpeech, a 32-bit Windows codec.

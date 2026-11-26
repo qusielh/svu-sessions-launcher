@@ -4,9 +4,8 @@ namespace SvuSessionsLauncher.Services;
 
 /// <summary>
 /// Abstraction over the WebDemo back-end. The published service is an
-/// RPC/encoded SOAP 1.1 endpoint; this interface lets the UI stay independent
-/// of the transport so it can run against mock data during development and
-/// against the real service in production.
+/// RPC/encoded SOAP 1.1 endpoint; this interface keeps the UI independent of
+/// the transport.
 /// </summary>
 public interface IWebDemoService
 {

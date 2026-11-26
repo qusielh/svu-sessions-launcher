@@ -74,15 +74,13 @@ lean and means the UI works offline.
 
 | Path | Purpose |
 | --- | --- |
-| `LinkConnection.cs` | TCP transport, optional proxy, route negotiation, receive thread, `MessageReceived` / `Failed` events. |
-| `Connection.cs` | Transport constants and the vendor's fixed "SSL" preamble. Not TLS. |
+| `LinkConnection.cs` | TCP transport, route negotiation, receive thread, `MessageReceived` / `Failed` events. |
+| `VendorHandshake.cs` | The vendor's fixed "SSL" preamble. Not TLS. |
 | `Message.cs` | One 16-byte-header wire frame, flags, compression, and obfuscation helpers. |
 | `Messages.cs` | Builders and parsers for join, heartbeat, roster, chat, voice, and viewport frames. Field order is protocol-critical. |
 | `SessionEngine.cs` | The student session: join, roster, public chat, voice frames, viewport dispatch, and lifecycle. |
 | `ViewportProtocol.cs` | Decodes the screen-share command stream into a persistent BGRA buffer. |
 | `BufferConversion.cs` | Little-endian integers and length-prefixed strings for the wire format. |
-| `CastCipher.cs` | Port of the vendor CAST cipher. Present for protocol completeness; never enabled by this client. |
-| `CipherTables.cs` | Generated S-box data for `CastCipher`. No logic. |
 
 ### `Localization/` and `Models/`
 
@@ -103,7 +101,6 @@ lean and means the UI works offline.
 | `IWebDemoService.cs` | The WebDemo contract and `WebDemoServiceException`. |
 | `SoapWebDemoService.cs` | Live RPC/encoded SOAP 1.1 client; diagnostics-only raw reply dumps. |
 | `CachedWebDemoService.cs` | Local catalog cache with background refresh and one-programme prefetch. |
-| `MockWebDemoService.cs` | Deterministic offline data for UI development. |
 | `ISessionConnection.cs` | The narrow session surface the chat/viewer depend on, plus `ViewportFrame`. |
 | `ISessionLauncher.cs` | Session-opening contract and `SessionLaunchException`. |
 | `LinktivitySessionLauncher.cs` | Host derivation, port 443, retry wrapper construction. |
